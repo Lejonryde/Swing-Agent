@@ -3,6 +3,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import ta
+import feedparser
 from openai import OpenAI
 from datetime import datetime
 
@@ -68,6 +69,15 @@ st.markdown("""
         margin-top: 35px;
         margin-bottom: 20px;
     }
+    .news-box {
+        background: rgba(15, 23, 42, 0.85);
+        border: 1px solid #38bdf8;
+        border-radius: 14px;
+        padding: 22px;
+        margin-top: 30px;
+        margin-bottom: 30px;
+        backdrop-filter: blur(5px);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -90,164 +100,4 @@ openai_key = api_key_input if api_key_input else os.environ.get("OPENAI_API_KEY"
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
 custom_tickers = st.sidebar.text_area(
     "Aktiva tickers:", 
-    "VOLV-B.ST, ERIC-B.ST, SSAB-B.ST, SBB-B.ST, TELIA.ST, SINCH.ST, NVDA, TSLA, AMD, PLTR"
-)
-tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
-
-# Hämtar marknadsdata
-market_data = []
-for ticker in tickers_list:
-    try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period="1mo")
-        if df.empty or len(df) < 5:
-            continue
-        close_ser = df['Close']
-        latest_close = close_ser.iloc[-1]
-        prev_close = close_ser.iloc[-2]
-        pct_change = ((latest_close - prev_close) / prev_close) * 100
-        valuta = "SEK" if ticker.endswith(".ST") else "USD"
-        rsi_val = ta.momentum.rsi(close=close_ser, window=14).iloc[-1]
-        high_20 = df['High'].max()
-        low_20 = df['Low'].min()
-        
-        volatility_spread = ((high_20 - low_20) / low_20) * 100
-        
-        market_data.append({
-            "ticker": ticker,
-            "close": latest_close,
-            "pct": pct_change,
-            "valuta": valuta,
-            "rsi": rsi_val,
-            "high_20": high_20,
-            "low_20": low_20,
-            "volatility": volatility_spread,
-            "history": close_ser.tail(10)
-        })
-    except Exception:
-        continue
-
-if not market_data:
-    st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
-    st.stop()
-
-# Sortering: Bull vs Bear
-bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
-bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
-
-if not bull_candidates: 
-    bull_candidates = market_data[:3]
-if not bear_candidates: 
-    bear_candidates = market_data[-3:]
-
-top_tickers = set([item['ticker'] for item in bull_candidates[:3]] + [item['ticker'] for item in bear_candidates[:3]])
-
-remaining_candidates = [d for d in market_data if d['ticker'] not in top_tickers]
-if not remaining_candidates:
-    remaining_candidates = market_data
-
-gazelle = max(remaining_candidates, key=lambda x: x['volatility'])
-
-# Delad skärm
-col_buy, col_sell = st.columns(2, gap="large")
-
-# ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
-with col_buy:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS (TOPP 3)</h4>", unsafe_allow_html=True)
-    st.write("Dagens starkaste köpkandidater:")
-    
-    for item in bull_candidates[:3]:
-        st.markdown(f"""
-            <div class="stock-card">
-                <div>
-                    <h3 style="margin: 0; color: #38bdf8;">⚡ {item['ticker']}</h3>
-                    <p style="margin: 2px 0; font-size: 1rem;">
-                        <b>{item['close']:.2f} {item['valuta']}</b> 
-                        <span style="color: #22c55e; font-weight: bold;">({item['pct']:+.2f}%)</span> 
-                        | RSI: <b>{item['rsi']:.1f}</b>
-                    </p>
-                    <small style="color: #94a3b8;">20d Högsta: {item['high_20']:.2f} {item['valuta']}</small>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=120)
-
-    run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
-    
-    if run_buy:
-        if not openai_key:
-            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
-        else:
-            with st.spinner("AI vaskar fram dagens bästa köpcasen..."):
-                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bull_candidates[:3]])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är elit-trader. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
-                        {"role": "user", "content": f"Analysera köpcasen:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
-
-
-# ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
-with col_sell:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS (TOPP 3)</h4>", unsafe_allow_html=True)
-    st.write("Dagens säljkandidater och rasrisker:")
-    
-    for item in bear_candidates[:3]:
-        st.markdown(f"""
-            <div class="stock-card">
-                <div>
-                    <h3 style="margin: 0; color: #f87171;">💀 {item['ticker']}</h3>
-                    <p style="margin: 2px 0; font-size: 1rem;">
-                        <b>{item['close']:.2f} {item['valuta']}</b> 
-                        <span style="color: #ef4444; font-weight: bold;">({item['pct']:+.2f}%)</span> 
-                        | RSI: <b>{item['rsi']:.1f}</b>
-                    </p>
-                    <small style="color: #94a3b8;">20d Lägsta: {item['low_20']:.2f} {item['valuta']}</small>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=120)
-
-    run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
-    
-    if run_sell:
-        if not openai_key:
-            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
-        else:
-            with st.spinner("AI analyserar dagens säljsignaler..."):
-                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
-                        {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
-
-# ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
-st.markdown("---")
-st.markdown(f"""
-    <div class="gazelle-box">
-        <h2 style='color: #eab308; margin: 0;'>🔥 VECKANS GASELL (HÖGVOLATIL OUTSIDER)</h2>
-        <h4 style='color: #38bdf8; margin-top: 5px;'>VALD OUTSIDER: {gazelle['ticker']} (Volatilitet: {gazelle['volatility']:.1f}%)</h4>
-        <p style='font-size: 1.1rem; margin-bottom: 5px;'>
-            <b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} 
-            <span style='color: {'#22c55e' if gazelle['pct'] >= 0 else '#ef4444'}; font-weight: bold;'>({gazelle['pct']:+.2f}%)</span> | 
-            <b>RSI:</b> {gazelle['rsi']:.1f} | 
-            <b>20d Högsta:</b> {gazelle['high_20']:.2f} {gazelle['valuta']} | 
-            <b>20d Lägsta:</b> {gazelle['low_20']:.2f} {gazelle['valuta']}
-        </p>
-    </div>
-""", unsafe_allow_html=True)
-
-st.line_chart(gazelle['history'], height=160)
+    "VOLV-B.ST, ERIC-B.ST, SSAB-B.ST, S
