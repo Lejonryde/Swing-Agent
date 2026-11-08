@@ -31,9 +31,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Huvudrubrik
+# Huvudrubrik (utan gamla namnet)
 st.markdown('<div class="brand-title">👑 SWING KING TERMINAL</div>', unsafe_allow_html=True)
-st.caption("LEJONRYDE CAPITAL QUANT ENGINE // BREAKOUT & EXIT PROTOCOL")
+st.caption("QUANT ENGINE // BREAKOUT & EXIT PROTOCOL")
 st.markdown("---")
 
 # Sidebar
@@ -55,7 +55,7 @@ col_buy, col_sell = st.columns(2, gap="large")
 with col_buy:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS</h4>", unsafe_allow_html=True)
-    st.write("Analyserar stängningskurser och momentum för din bevakningslista.")
+    st.write("Analyserar stängningskurser, grafer och momentum.")
     
     run_buy = st.button("🚀 KÖP-ANALYS", use_container_width=True, key="btn_buy")
     
@@ -64,7 +64,7 @@ with col_buy:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar marknadsdata för köpsignaler..."):
+            with st.spinner("Hämtar grafer och marknadsdata..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -76,13 +76,29 @@ with col_buy:
                         latest_close = close_ser.iloc[-1]
                         prev_close = close_ser.iloc[-2]
                         pct_change = ((latest_close - prev_close) / prev_close) * 100
-                        high_20 = df['High'].max()
                         valuta = "SEK" if ticker.endswith(".ST") else "USD"
                         
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | 20d Högsta: {high_20:.2f} | RSI: {rsi_val:.1f}"
+                        # Hämta logotyp om den finns
+                        info = stock.info
+                        logo_url = info.get('logo_url', '')
+                        
+                        # Visa logotyp, ticker och veckograf direkt i gränssnittet
+                        col_img, col_txt = st.columns([1, 4])
+                        with col_img:
+                            if logo_url:
+                                st.image(logo_url, width=45)
+                            else:
+                                st.write("📈")
+                        with col_txt:
+                            st.markdown(f"**{ticker}** | {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}")
+                        
+                        # Veckograf (senaste 7 dagarna)
+                        st.line_chart(close_ser.tail(7), height=120)
+                        
+                        info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
                     except Exception:
                         continue
@@ -95,11 +111,11 @@ with col_buy:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "Du är en elit-trader på Lejonryde Capital. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
+                            {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
                             {"role": "user", "content": f"Vaska fram de 3 starkaste köpcasen:\n{market_text}"}
                         ]
                     )
-                    st.success("ANALYS KLAR")
+                    st.success("AI-ANALYS KLAR")
                     st.markdown(response.choices[0].message.content)
 
 
@@ -107,7 +123,7 @@ with col_buy:
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS</h4>", unsafe_allow_html=True)
-    st.write("Identifierar överköpta lägen och rasrisker baserat på stängningskurser.")
+    st.write("Identifierar överköpta lägen och rasrisker med grafer.")
     
     run_sell = st.button("🛑 SÄLJ-ANALYS", use_container_width=True, key="btn_sell")
     
@@ -116,7 +132,7 @@ with col_sell:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar marknadsdata för säljsignaler..."):
+            with st.spinner("Hämtar grafer och exit-data..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -128,13 +144,27 @@ with col_sell:
                         latest_close = close_ser.iloc[-1]
                         prev_close = close_ser.iloc[-2]
                         pct_change = ((latest_close - prev_close) / prev_close) * 100
-                        low_20 = df['Low'].min()
                         valuta = "SEK" if ticker.endswith(".ST") else "USD"
                         
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | 20d Lägsta: {low_20:.2f} | RSI: {rsi_val:.1f}"
+                        info = stock.info
+                        logo_url = info.get('logo_url', '')
+                        
+                        col_img, col_txt = st.columns([1, 4])
+                        with col_img:
+                            if logo_url:
+                                st.image(logo_url, width=45)
+                            else:
+                                st.write("📉")
+                        with col_txt:
+                            st.markdown(f"**{ticker}** | {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}")
+                        
+                        # Veckograf (senaste 7 dagarna)
+                        st.line_chart(close_ser.tail(7), height=120)
+                        
+                        info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
                     except Exception:
                         continue
@@ -147,9 +177,9 @@ with col_sell:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "Du är en skoningslös riskmanager på Lejonryde Capital. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
+                            {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
                             {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS:\n{market_text}"}
                         ]
                     )
-                    st.success("ANALYS KLAR")
+                    st.success("AI-ANALYS KLAR")
                     st.markdown(response.choices[0].message.content)
