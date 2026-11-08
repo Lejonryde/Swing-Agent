@@ -95,8 +95,6 @@ st.markdown(
 # Sidebar
 st.sidebar.header("🕹️ CONTROL PANEL")
 api_key_input = st.sidebar.text_input("OpenAI API Key", type="password", key="openai_api_key_field")
-
-# Hämtar nyckel från fältet eller miljövariabel
 openai_key = api_key_input if api_key_input else os.environ.get("OPENAI_API_KEY", "")
 
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
@@ -273,36 +271,25 @@ st.line_chart(gazelle['history'], height=160)
 # ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK) ====================
 st.markdown(
     '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
-    '<p style="color: #94a3b8; font-size: 0.9rem;">Hämtas och uppdateras automatiskt vid sidladdning:</p>',
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>',
     unsafe_allow_html=True
 )
-
-@st.cache_data(ttl=3600)
-def fetch_daily_news(api_key, date_str):
-    if not api_key:
-        return None
-    try:
-        client = OpenAI(api_key=api_key)
-        news_resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
-                {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {date_str}."}
-            ]
-        )
-        return news_resp.choices[0].message.content
-    except Exception:
-        return None
 
 if not openai_key:
     st.warning("⚠️ Ange din OpenAI API-nyckel i sidopanelen för att läsa in automatiska makro- och nyhetsrubriker.")
 else:
-    with st.spinner("Laddar dagens färska ekonomirubriker..."):
-        news_content = fetch_daily_news(openai_key, today_str)
-        if news_content:
-            st.markdown(news_content)
-        else:
-            st.info("Kunde inte hämta nyheter. Kontrollera din API-nyckel.")
+    try:
+        with st.spinner("Laddar dagens färska ekonomirubriker..."):
+            client = OpenAI(api_key=openai_key)
+            news_resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
+                    {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
+                ]
+            )
+            st.markdown(news_resp.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Kunde inte hämta nyheter: {e}")
 
 st.markdown('</div>', unsafe_allow_html=True)
