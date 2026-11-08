@@ -94,7 +94,9 @@ st.markdown(
 
 # Sidebar
 st.sidebar.header("🕹️ CONTROL PANEL")
-api_key_input = st.sidebar.text_input("OpenAI API Key", type="password")
+api_key_input = st.sidebar.text_input("OpenAI API Key", type="password", key="openai_api_key_field")
+
+# Hämtar nyckel från fältet eller miljövariabel
 openai_key = api_key_input if api_key_input else os.environ.get("OPENAI_API_KEY", "")
 
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
@@ -186,7 +188,7 @@ with col_buy:
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
     
     if run_buy:
-        if not openai_key or not openai_key.startswith("sk-"):
+        if not openai_key:
             st.warning("⚠️ Vänligen ange en giltig OpenAI API-nyckel i sidopanelen för att köra AI-analysen.")
         else:
             try:
@@ -230,7 +232,7 @@ with col_sell:
     run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
     
     if run_sell:
-        if not openai_key or not openai_key.startswith("sk-"):
+        if not openai_key:
             st.warning("⚠️ Vänligen ange en giltig OpenAI API-nyckel i sidopanelen för att köra AI-analysen.")
         else:
             try:
@@ -272,14 +274,13 @@ st.line_chart(gazelle['history'], height=160)
 st.markdown(
     '<div class="news-box">'
     '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
-    '<p style="color: #94a3b8; font-size: 0.9rem;">Hämtas och uppdateras automatiskt vid sidladdning:</p>'
-    '</div>',
+    '<p style="color: #94a3b8; font-size: 0.9rem;">Hämtas och uppdateras automatiskt vid sidladdning:</p>',
     unsafe_allow_html=True
 )
 
 @st.cache_data(ttl=3600)
 def fetch_daily_news(api_key, date_str):
-    if not api_key or not api_key.startswith("sk-"):
+    if not api_key:
         return None
     try:
         client = OpenAI(api_key=api_key)
@@ -294,7 +295,7 @@ def fetch_daily_news(api_key, date_str):
     except Exception:
         return None
 
-if not openai_key or not openai_key.startswith("sk-"):
+if not openai_key:
     st.warning("⚠️ Ange din OpenAI API-nyckel i sidopanelen för att läsa in automatiska makro- och nyhetsrubriker.")
 else:
     with st.spinner("Laddar dagens färska ekonomirubriker..."):
@@ -303,3 +304,5 @@ else:
             st.markdown(news_content)
         else:
             st.info("Kunde inte hämta nyheter. Kontrollera din API-nyckel.")
+
+st.markdown('</div>', unsafe_allow_html=True)
