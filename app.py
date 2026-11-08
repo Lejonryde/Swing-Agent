@@ -3,7 +3,6 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import ta
-import feedparser
 from openai import OpenAI
 from datetime import datetime
 
@@ -263,22 +262,26 @@ st.markdown(
 
 st.line_chart(gazelle['history'], height=160)
 
-# ==================== DAGENS EKONOMIRUBRIKER ====================
+# ==================== DAGENS EKONOMIRUBRIKER (AI-GENERERAD / MARKNADSLÄGE) ====================
 st.markdown(
     '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER</h3>',
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
+    '<p style="color: #94a3b8; font-size: 0.9rem;">Klicka på knappen nedan för att låta AI generera dagens färska ekonomirubriker och marknadskommentarer direkt.</p>'
+    '</div>',
     unsafe_allow_html=True
 )
 
-try:
-    feed = feedparser.parse("https://news.google.com/rss/search?q=aktier+borsen+ekonomi+naringsliv&hl=sv&gl=SE&ceid=SE:sv")
-    entries = feed.entries[:5]
-    if entries:
-        for entry in entries:
-            st.markdown(f"- [{entry.title}]({entry.link})")
+if st.button("📡 HÄMTA DAGENS MAKRO- & NYHETSANALYS", use_container_width=True):
+    if not openai_key:
+        st.error("Ange din OpenAI API-nyckel i sidopanelen för att hämta nyhetsanalysen.")
     else:
-        st.info("Inga nya rubriker tillgängliga för tillfället.")
-except Exception:
-    st.info("Kunde inte ladda finansiella nyhetsrubriker just nu.")
-
-st.markdown('</div>', unsafe_allow_html=True)
+        with st.spinner("Analyserar dagens globala finansflöden och börsrubriker..."):
+            client = OpenAI(api_key=openai_key)
+            news_resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 fiktiva eller dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
+                    {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
+                ]
+            )
+            st.markdown(news_resp.choices[0].message.content)
