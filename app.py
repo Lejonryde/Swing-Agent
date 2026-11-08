@@ -147,4 +147,9 @@ with col_sell:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "Du är en skoningslös riskmanager på Lejonryde Capital.
+                            {"role": "system", "content": "Du är en skoningslös riskmanager på Lejonryde Capital. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
+                            {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS:\n{market_text}"}
+                        ]
+                    )
+                    st.success("ANALYS KLAR")
+                    st.markdown(response.choices[0].message.content)
