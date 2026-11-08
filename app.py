@@ -7,32 +7,43 @@ from openai import OpenAI
 
 # Sidkonfiguration
 st.set_page_config(
-    page_title="AI Swing Trading Dashboard",
+    page_title="AI Swing Trading Terminal",
     page_icon="⚡",
     layout="wide"
 )
 
-# Anpassad CSS för att få till snygga blå (köp) och röda (sälj) boxar
+# Anpassad CSS för drama, färgboxar och stil
 st.markdown("""
 <style>
     .buy-box {
-        background-color: rgba(0, 123, 255, 0.08);
+        background: linear-gradient(135deg, rgba(0, 123, 255, 0.12) 0%, rgba(0, 200, 255, 0.03) 100%);
         border: 2px solid #007bff;
-        padding: 20px;
-        border-radius: 10px;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
     }
     .sell-box {
-        background-color: rgba(220, 53, 69, 0.08);
+        background: linear-gradient(135deg, rgba(220, 53, 69, 0.12) 0%, rgba(255, 50, 50, 0.03) 100%);
         border: 2px solid #dc3545;
-        padding: 20px;
-        border-radius: 10px;
+        padding: 25px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+    }
+    .main-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Rubrik
-st.title("⚡ AI Swing Trading Dashboard — Köp & Sälj")
-st.caption("Delad terminal för aktiva köplägen och sälj-/exit-signaler.")
+# Topp-banner med logotype-känsla och drama
+st.markdown("""
+    <div class="main-header">
+        <h1>⚡ LEJONRYDE CAPITAL // SWING TERMINAL</h1>
+    </div>
+""", unsafe_allow_html=True)
+st.caption("🚨 AI-driven krigszon för kortsiktig momentum-trading, utbrott och skoningslösa exits.")
 
 # Sidebar
 st.sidebar.header("⚙️ Inställningar")
@@ -49,20 +60,20 @@ tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 # Huvudlayout: Delad skärm (Köp vs Sälj)
 col_buy, col_sell = st.columns(2, gap="large")
 
-# ==================== KÖP-SIDAN (BLÅ) ====================
+# ==================== KÖP-SIDAN (BLÅ - BULLISH DRAMA) ====================
 with col_buy:
     st.markdown('<div class="buy-box">', unsafe_allow_html=True)
-    st.subheader("🔵 KÖP / BREAKOUTS")
-    st.markdown("Fokuserar på att hitta starka köplägen, stöd och uppåtgående momentum.")
+    st.subheader("🚀 BULL-PENNA // KÖPLÄGEN & BREAKOUTS")
+    st.markdown("*Här jagar vi de blodiga rörelserna uppåt. Hög energi, perfekta entrisar.*")
     
-    run_buy = st.button("🚀 Kör Köp-analys")
+    run_buy = st.button("🔥 UTELÖS KÖP-ATTACK (START)", use_container_width=True)
     
     if run_buy:
         if not openai_key:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Skannar efter köpkandidater..."):
+            with st.spinner("Letar efter explosioner i orderdjupet..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -84,29 +95,29 @@ with col_buy:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en aggressiv swingtrader som letar efter de bästa köplägena."},
-                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier för KÖP med exakt entry och stop-loss:\n{market_text}"}
+                        {"role": "system", "content": "Du är en kompromisslös, aggressiv kryptisk swingtrader (Jordan Belfort-vibe) som älskar risk och stora uppgångar. Använd dramatiskt, eldigt språk med emojis."},
+                        {"role": "user", "content": f"Analysera datan med maximalt driv och ge Top 3 aktier för KÖP. Sätt eld på rapporten med exakta entry-nivåer, tight stop-loss och saftig målkurs:\n{market_text}"}
                     ]
                 )
-                st.success("Köp-analys klar!")
+                st.success(" attacken är redo!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ==================== SÄLJ-SIDAN (RÖD) ====================
+# ==================== SÄLJ-SIDAN (RÖD - BEARISH DRAMA) ====================
 with col_sell:
     st.markdown('<div class="sell-box">', unsafe_allow_html=True)
-    st.subheader("🔴 SÄLJ / EXIT & SHORT")
-    st.markdown("Fokuserar på överköpta lägen, brutna stöd och vinsthemtagning.")
+    st.subheader("💀 BEAR-TRAP // EXIT & VINSTHEMTAGNING")
+    st.markdown("*Här klipper vi förlorarna skoningslöst och säkrar vinsten innan marknaden gör det åt oss.*")
     
-    run_sell = st.button("🛑 Kör Sälj-analys")
+    run_sell = st.button("🛑 UTELÖS SLakt-ATTACK (START)", use_container_width=True)
     
     if run_sell:
         if not openai_key:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Skannar efter sälj- och exit-signaler..."):
+            with st.spinner("Letar efter blodbad, överköpta monster och brutna stöd..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -127,10 +138,10 @@ with col_sell:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en riskmedveten förvaltare som identifierar överköpta aktier och säljsignaler."},
-                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som bör SÄLJAS eller där vinst bör säkras (högt RSI, brutna stöd):\n{market_text}"}
+                        {"role": "system", "content": "Du är en benhård riskhanterare som hatar att förlora pengar. Varnar dramatiskt för överköpta aktier, stup och röd panik. Använd stenhårt språk med emojis."},
+                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som OMEDELBART SKA SÄLJAS eller blankas (högt RSI, rasrisk, brutna stöd). Var skoningslös:\n{market_text}"}
                     ]
                 )
-                st.success("Sälj-analys klar!")
+                st.success("Slakt-rapport klar!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
