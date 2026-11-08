@@ -6,17 +6,16 @@ from openai import OpenAI
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-# Breddad lista med högvolatila Small/Mid/Large Cap-aktier
+# Ren och stabil aktielista som inte ger 404-fel
 tickers = [
     # Sverige (SEK)
-    "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "SSAB-B.ST", "LUND-B.ST",
-    "ACAST.ST", "SWECO-B.ST", "STOR-B.ST", "SBB-B.ST", "HACK.ST",
-    "FING-B.ST", "SINCH.ST", "EMBRAC-B.ST", "ALLEI.ST",
+    "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "SSAB-B.ST", "LUND.ST", 
+    "SBB-B.ST", "SINCH.ST", "EMBRAC.ST", "TELIA.ST", "GETIB.ST",
     # USA (USD)
-    "NVDA", "TSLA", "AMD", "PLTR", "AAPL", "SOFI", "MARA", "RIOT", "IONQ", "SMCI"
+    "NVDA", "TSLA", "AMD", "PLTR", "AAPL", "SOFI", "MARA", "RIOT"
 ]
 
-print("1. Skannar utökad aktielista med bredare riskparametrar...")
+print("1. Skannar aktielistan...")
 stock_summaries = []
 
 for ticker in tickers:
@@ -24,7 +23,6 @@ for ticker in tickers:
         stock = yf.Ticker(ticker)
         df = stock.history(period="6mo")
         
-        # Minskat krav på historik för att inte missa nyare/rörliga bolag
         if df.empty or len(df) < 30:
             continue
 
@@ -34,12 +32,11 @@ for ticker in tickers:
         is_swedish = ticker.endswith(".ST")
         valuta = "SEK" if is_swedish else "USD"
         
-        # BREDARE PRISFILTER: 10-300 SEK / 2-50 USD
+        # Flexibelt prisfilter
         min_price = 10.0 if is_swedish else 2.0
-        max_price = 300.0 if is_swedish else 50.0
+        max_price = 500.0 if is_swedish else 100.0
         
-        # Om aktien ligger utanför intervallet, ta med den ändå om det är en känd USA-jätte
-        if not (min_price <= close_price <= max_price) and ticker not in ["NVDA", "TSLA", "AMD"]:
+        if not (min_price <= close_price <= max_price):
             continue
 
         df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
@@ -48,16 +45,14 @@ for ticker in tickers:
         sma_50 = latest['SMA_50'] if pd.notna(latest['SMA_50']) else close_price
         rsi = latest['RSI'] if pd.notna(latest['RSI']) else 50.0
         
-        # Mjukare Stop-Loss: 3-dagars lägsta minus 1.5% marginal
         stop_loss = df['Low'].iloc[-3:].min() * 0.985
         risk_amount = close_price - stop_loss
         
-        # Skulle stop-loss hamna över eller för nära kursen lägger vi en schablon på 4%
         if risk_amount <= 0:
-            stop_loss = close_price * 0.96
+            stop_loss = close_price * 0.95
             risk_amount = close_price - stop_loss
 
-        target_reward_ratio = 2.5  # Sänkt R/R från 3.0 till 2.5 för att fånga fler setups
+        target_reward_ratio = 2.5
         take_profit = close_price + (risk_amount * target_reward_ratio)
         
         loss_pct = ((close_price - stop_loss) / close_price) * 100
@@ -74,26 +69,24 @@ for ticker in tickers:
         continue
 
 if not stock_summaries:
-    raise RuntimeError("Inga aktier kunde beräknas. Kontrollera yfinance-anslutningen.")
+    raise RuntimeError("Inga aktier matchade filtren.")
 
 market_data_text = "\n".join(stock_summaries)
 
 print(f"2. Skickar {len(stock_summaries)} aktier till AI-agenten...")
 
 prompt = f"""
-Du är en aggressiv swingtrader som letar efter hög volatilitet och starka momentum-setups.
-Här är färsk kursdata för filtrerade aktier:
+Du är en aggressiv swingtrader som söker starka momentum-setups.
+Här är aktuell kursdata för godkända aktier:
 
 {market_data_text}
 
-Välj ut de TOPP 3 absolut mest intressanta kandidaterna för en swingtrade (horisont 3-10 dagar).
-Du FÅR ta högre risk om uppsidan och momentumet motiverar det.
-
-Ranka dem (1, 2, 3) och ange tydligt:
-1. Bolag & Ticker
-2. Entry (Nuvarande pris), Stop-Loss och Målkurs (Take-Profit)
-3. Risk/Reward-ratio och beräknad procentuell upp-/nedsida
-4. En het och direkt motivering (t.ex. RSI-översålt, bryter ut över SMA50, hög volatilitet).
+Välj ut de TOPP 3 absolut bästa kandidaterna för en swingtrade (horisont 3-10 dagar).
+Ranka dem (1, 2, 3) och ange för varje aktie:
+- Bolag & Ticker
+- Exakt Entry, Stop-Loss och Take-Profit (Målkurs)
+- Risk/Reward-förhållande och procentuell upp-/nedsida
+- En kort och vass motivering baserat på RSI och trend.
 
 Skriv rapporten på svenska.
 """
@@ -102,7 +95,7 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 response = client.chat.completions.create(
     model="gpt-4o-mini",
     messages=[
-        {"role": "system", "content": "Du är expert på aggressiv momentum- och swingtrading i volatile aktier."},
+        {"role": "system", "content": "Du är expert på momentum- och swingtrading."},
         {"role": "user", "content": prompt}
     ],
     temperature=0.4
@@ -111,7 +104,7 @@ response = client.chat.completions.create(
 ai_report = response.choices[0].message.content
 
 print("\n\n" + "="*60)
-print("🤖 HÄR ÄR DIN AI SWING-RAPPORT (HIGH RISK / HIGH REWARD TOPP 3):")
+print("🤖 HÄR ÄR DIN AI SWING-RAPPORT (TOPP 3):")
 print("="*60)
 print(ai_report)
 print("="*60 + "\n\n")
