@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Inspirerande, exklusiv mörk bakgrund och styling
+# Inspirerande mörk bakgrund och styling
 st.markdown("""
 <style>
     html, body, [data-testid="stAppViewContainer"] {
@@ -60,9 +60,9 @@ st.markdown("""
         backdrop-filter: blur(5px);
     }
     .gazelle-box {
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%);
-        border: 2px solid #22c55e;
-        box-shadow: 0 0 25px rgba(34, 197, 94, 0.2);
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 2px solid #eab308;
+        box-shadow: 0 0 25px rgba(234, 179, 8, 0.25);
         border-radius: 14px;
         padding: 22px;
         margin-top: 35px;
@@ -71,10 +71,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Dagens datum för daglig uppdateringsstatus
+# Dagens datum
 today_str = datetime.now().strftime("%Y-%m-%d")
 
-# Inramad SWINGKINGS Logotyp med daglig stämpel
+# Inramad SWINGKINGS Logotyp
 st.markdown(f"""
     <div class="logo-header-box">
         <h1 class="logo-title">👑 SWINGKINGS</h1>
@@ -94,7 +94,7 @@ custom_tickers = st.sidebar.text_area(
 )
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 
-# Hämtar marknadsdata
+# Hämtar marknadsdata och beräknar volatilitet (spann mellan högsta och lägsta i %)
 market_data = []
 for ticker in tickers_list:
     try:
@@ -111,6 +111,9 @@ for ticker in tickers_list:
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
+        # Volatilitetsmått: procenter mellan 20d lägsta och högsta
+        volatility_spread = ((high_20 - low_20) / low_20) * 100
+        
         market_data.append({
             "ticker": ticker,
             "close": latest_close,
@@ -119,6 +122,7 @@ for ticker in tickers_list:
             "rsi": rsi_val,
             "high_20": high_20,
             "low_20": low_20,
+            "volatility": volatility_spread,
             "history": close_ser.tail(10)
         })
     except Exception:
@@ -128,7 +132,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
     st.stop()
 
-# Sortering: Bull vs Bear samt Veckans Gasell
+# Sortering: Bull vs Bear (Topp 3 vardera)
 bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
 bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
 
@@ -137,9 +141,16 @@ if not bull_candidates:
 if not bear_candidates: 
     bear_candidates = market_data[-3:]
 
-gazelle = max(market_data, key=lambda x: x['pct'])
+top_tickers = set([item['ticker'] for item in bull_candidates[:3]] + [item['ticker'] for item in bear_candidates[:3]])
 
-# Delad skärm för Bull och Bear (Topp 3)
+# OUTSIDER / VECKANS GASELL: Väljer den aktie med HÖGST volatilitet som INTE är bland topp 3
+remaining_candidates = [d for d in market_data if d['ticker'] not in top_tickers]
+if not remaining_candidates:
+    remaining_candidates = market_data # Fallback om alla är upplockade
+
+gazelle = max(remaining_candidates, key=lambda x: x['volatility'])
+
+# Delad skärm för Bull och Bear
 col_buy, col_sell = st.columns(2, gap="large")
 
 # ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
@@ -217,31 +228,4 @@ with col_sell:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI analyserar dagens säljsignaler..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates[:3]])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
-                        {"role": "user", "content": f"Peka ut de aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
-
-# ==================== VECKANS GASELL ====================
-st.markdown("---")
-st.markdown(f"""
-    <div class="gazelle-box">
-        <h2 style='color: #22c55e; margin: 0;'>🦌 VECKANS GASELL</h2>
-        <h4 style='color: #38bdf8; margin-top: 5px;'>HÖGST MOMENTUM & AVKASTNING: {gazelle['ticker']}</h4>
-        <p style='font-size: 1.1rem; margin-bottom: 5px;'>
-            <b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} 
-            <span style='color: #22c55e; font-weight: bold;'>({gazelle['pct']:+.2f}%)</span> | 
-            <b>RSI:</b> {gazelle['rsi']:.1f} | 
-            <b>20d Högsta:</b> {gazelle['high_20']:.2f} {gazelle['valuta']}
-        </p>
-    </div>
-""", unsafe_allow_html=True)
-
-st.line_chart(gazelle['history'], height=160)
+                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close
