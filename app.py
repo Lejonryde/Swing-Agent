@@ -7,41 +7,34 @@ from openai import OpenAI
 
 # Sidkonfiguration
 st.set_page_config(
-    page_title="Lejonryde Capital // Swing Terminal",
+    page_title="Swing Terminal",
     page_icon="⚡",
     layout="wide"
 )
 
-# Anpassad CSS för färgboxar och logotyper
+# Anpassad CSS som fyller hela halvorna med blått respektive rött
 st.markdown("""
 <style>
-    .buy-box {
-        background: linear-gradient(135deg, rgba(0, 123, 255, 0.12) 0%, rgba(0, 200, 255, 0.03) 100%);
-        border: 2px solid #007bff;
-        padding: 25px;
+    /* Gör hela kolumn-boxarna helt färgfyllda */
+    .buy-zone {
+        background-color: rgba(0, 123, 255, 0.15);
+        border: 3px solid #007bff;
+        padding: 30px;
         border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0, 123, 255, 0.1);
+        min-height: 500px;
     }
-    .sell-box {
-        background: linear-gradient(135deg, rgba(220, 53, 69, 0.12) 0%, rgba(255, 50, 50, 0.03) 100%);
-        border: 2px solid #dc3545;
-        padding: 25px;
+    .sell-zone {
+        background-color: rgba(220, 53, 69, 0.15);
+        border: 3px solid #dc3545;
+        padding: 30px;
         border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
-    }
-    .box-logo {
-        font-size: 1.1rem;
-        font-weight: 800;
-        letter-spacing: 2px;
-        margin-bottom: 10px;
-        text-transform: uppercase;
+        min-height: 500px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Huvudrubrik
-st.title("⚡ LEJONRYDE CAPITAL // SWING TERMINAL")
-st.caption("🚨 AI-driven krigszon för kortsiktig momentum-trading, utbrott och skoningslösa exits.")
+# Enkel rubrik
+st.title("⚡ AI Swing Trading Terminal")
 
 # Sidebar
 st.sidebar.header("⚙️ Inställningar")
@@ -55,24 +48,23 @@ custom_tickers = st.sidebar.text_area(
 )
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 
-# Huvudlayout: Delad skärm (Köp vs Sälj)
+# Huvudlayout: Delad skärm (Hela halvorna)
 col_buy, col_sell = st.columns(2, gap="large")
 
-# ==================== KÖP-SIDAN (BLÅ MED LOGO) ====================
+# ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
 with col_buy:
-    st.markdown('<div class="buy-box">', unsafe_allow_html=True)
-    st.markdown('<div style="color: #007bff;" class="box-logo">🛡️ LEJONRYDE CAPITAL // BULL DIVISION</div>', unsafe_allow_html=True)
-    st.subheader("🚀 KÖPLÄGEN & BREAKOUTS")
-    st.markdown("*Här jagar vi de blodiga rörelserna uppåt. Hög energi, perfekta entrisar.*")
+    st.markdown('<div class="buy-zone">', unsafe_allow_html=True)
+    st.markdown("## 🔵 KÖPLÄGEN & BREAKOUTS")
+    st.write("Fokuserar på starka uppåtgående trender och köpsignaler.")
     
-    run_buy = st.button("🔥 UTELÖS KÖP-ATTACK (START)", use_container_width=True)
+    run_buy = st.button("🚀 KÖP-ANALYS", use_container_width=True)
     
     if run_buy:
         if not openai_key:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Letar efter explosioner i orderdjupet..."):
+            with st.spinner("Skannar köpkandidater..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -81,11 +73,10 @@ with col_buy:
                         latest = df.iloc[-1]
                         close = latest['Close']
                         high_20 = df['High'].iloc[-20:].max()
-                        low_5 = df['Low'].iloc[-5:].min()
                         valuta = "SEK" if ticker.endswith(".ST") else "USD"
                         rsi = ta.momentum.rsi(df['Close'], window=14).iloc[-1]
                         
-                        stock_data_list.append(f"Ticker: {ticker} | Kurs: {close:.2f} {valuta} | 20d Högsta: {high_20:.2f} | 5d Stöd: {low_5:.2f} | RSI: {rsi:.1f}")
+                        stock_data_list.append(f"Ticker: {ticker} | Kurs: {close:.2f} {valuta} | 20d Högsta: {high_20:.2f} | RSI: {rsi:.1f}")
                     except:
                         continue
                 
@@ -94,30 +85,29 @@ with col_buy:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en kompromisslös, aggressiv swingtrader för Lejonryde Capital som älskar risk och stora uppgångar. Använd dramatiskt, eldigt språk med emojis."},
-                        {"role": "user", "content": f"Analysera datan med maximalt driv och ge Top 3 aktier för KÖP. Sätt eld på rapporten med exakta entry-nivåer, tight stop-loss och saftig målkurs:\n{market_text}"}
+                        {"role": "system", "content": "Du är en aggressiv swingtrader som letar efter de bästa köplägena med hög potential."},
+                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier för KÖP med exakt entry, stop-loss och målkurs:\n{market_text}"}
                     ]
                 )
-                st.success("Köp-attack redo!")
+                st.success("Klar!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ==================== SÄLJ-SIDAN (RÖD MED LOGO) ====================
+# ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
 with col_sell:
-    st.markdown('<div class="sell-box">', unsafe_allow_html=True)
-    st.markdown('<div style="color: #dc3545;" class="box-logo">⚠️ LEJONRYDE CAPITAL // BEAR DIVISION</div>', unsafe_allow_html=True)
-    st.subheader("💀 EXIT & VINSTHEMTAGNING")
-    st.markdown("*Här klipper vi förlorarna skoningslöst och säkrar vinsten innan marknaden gör det åt oss.*")
+    st.markdown('<div class="sell-zone">', unsafe_allow_html=True)
+    st.markdown("## 🔴 SÄLJ & VINSTHEMTAGNING")
+    st.write("Fokuserar på överköpta lägen, brutna stöd och exits.")
     
-    run_sell = st.button("🛑 UTELÖS SLAKT-ATTACK (START)", use_container_width=True)
+    run_sell = st.button("🛑 SÄLJ-ANALYS", use_container_width=True)
     
     if run_sell:
         if not openai_key:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Letar efter blodbad, överköpta monster och brutna stöd..."):
+            with st.spinner("Skannar säljsignaler..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -138,11 +128,10 @@ with col_sell:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en benhård riskhanterare för Lejonryde Capital som hatar att förlora pengar. Varnar dramatiskt för överköpta aktier, stup och röd panik. Använd stenhårt språk med emojis."},
-                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som OMEDELBART SKA SÄLJAS eller blankas (högt RSI, rasrisk, brutna stöd). Var skoningslös:\n{market_text}"}
+                        {"role": "system", "content": "Du är en försiktig riskhanterare som varnar för överköpta aktier och rekommenderar försäljning."},
+                        {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som bör SÄLJAS eller där vinst bör säkras:\n{market_text}"}
                     ]
                 )
-                st.success("Slakt-rapport klar!")
+                st.success("Klar!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
-    
