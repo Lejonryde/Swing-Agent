@@ -268,29 +268,39 @@ st.markdown(
 
 st.line_chart(gazelle['history'], height=160)
 
-# ==================== DAGENS EKONOMIRUBRIKER (AI-GENERERAD / MAKRO) ====================
+# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK) ====================
 st.markdown(
     '<div class="news-box">'
     '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
-    '<p style="color: #94a3b8; font-size: 0.9rem;">Klicka på knappen nedan för att generera dagens färska ekonomirubriker och marknadskommentarer via AI.</p>'
-    '</div>',
+    '<p style="color: #94a3b8; font-size: 0.9rem;">Hämtas och uppdateras automatiskt vid sidladdning:</p>',
     unsafe_allow_html=True
 )
 
-if st.button("📡 HÄMTA DAGENS MAKRO- & NYHETSANALYS", use_container_width=True):
-    if not openai_key or not openai_key.startswith("sk-"):
-        st.warning("⚠️ Vänligen ange din OpenAI API-nyckel i sidopanelen först.")
-    else:
-        try:
-            with st.spinner("Analyserar dagens globala finansflöden och börsrubriker..."):
-                client = OpenAI(api_key=openai_key)
-                news_resp = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
-                        {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
-                    ]
-                )
-                st.markdown(news_resp.choices[0].message.content)
-        except Exception as e:
-            st.error(f"Kunde inte nå OpenAI: {e}")
+@st.cache_data(ttl=3600)  // Sparar cachat i 1 timme så det inte anropar i onödan
+def fetch_daily_news(api_key, date_str):
+    if not api_key or not api_key.startswith("sk-"):
+        return None
+    try:
+        client = OpenAI(api_key=api_key)
+        news_resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
+                {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {date_str}."}
+            ]
+        )
+        return news_resp.choices[0].message.content
+    except Exception:
+        return None
+
+if not openai_key or not openai_key.startswith("sk-"):
+    st.warning("⚠️ Ange din OpenAI API-nyckel i sidopanelen för att läsa in automatiska makro- och nyhetsrubriker.")
+else:
+    with st.spinner("Laddar dagens färska ekonomirubriker..."):
+        news_content = fetch_daily_news(openai_key, today_str)
+        if news_content:
+            st.markdown(news_content)
+        else:
+            st.info("Kunde inte hämta nyheter. Kontrollera din API-nyckel.")
+
+st.markdown('</div>', unsafe_allow_html=True)
