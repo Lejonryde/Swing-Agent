@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 import ta
 from openai import OpenAI
+from datetime import datetime
 
 # Sidkonfiguration
 st.set_page_config(
@@ -12,24 +13,27 @@ st.set_page_config(
     layout="wide"
 )
 
-# Mörk styling med inramad SWINGKINGS-logotyp
+# Inspirerande, exklusiv mörk bakgrund och styling
 st.markdown("""
 <style>
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #0b0e14 !important;
+        background: linear-gradient(135deg, #06090f 0%, #0b0e14 50%, #111827 100%) !important;
         color: #e0e6ed !important;
+        background-attachment: fixed;
     }
     [data-testid="stSidebar"] {
-        background-color: #121824 !important;
+        background-color: #0d1117 !important;
+        border-right: 1px solid #1f2937 !important;
     }
     .logo-header-box {
-        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
         border: 2px solid #38bdf8;
-        box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
-        border-radius: 14px;
+        box-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
+        border-radius: 16px;
         padding: 25px 30px;
         margin-bottom: 25px;
         text-align: center;
+        backdrop-filter: blur(10px);
     }
     .logo-title {
         font-size: 3rem;
@@ -48,29 +52,33 @@ st.markdown("""
         text-transform: uppercase;
     }
     .stock-card {
-        background: #161b22;
+        background: rgba(22, 27, 34, 0.85);
         border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(5px);
     }
     .gazelle-box {
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.85) 100%);
         border: 2px solid #22c55e;
-        box-shadow: 0 0 20px rgba(34, 197, 94, 0.25);
-        border-radius: 12px;
-        padding: 20px;
+        box-shadow: 0 0 25px rgba(34, 197, 94, 0.2);
+        border-radius: 14px;
+        padding: 22px;
         margin-top: 35px;
         margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Inramad SWINGKINGS Logotyp
-st.markdown("""
+# Dagens datum för daglig uppdateringsstatus
+today_str = datetime.now().strftime("%Y-%m-%d")
+
+# Inramad SWINGKINGS Logotyp med daglig stämpel
+st.markdown(f"""
     <div class="logo-header-box">
         <h1 class="logo-title">👑 SWINGKINGS</h1>
-        <div class="logo-sub">QUANT ENGINE // BREAKOUT & EXIT PROTOCOL</div>
+        <div class="logo-sub">DAGLIG QUANT ENGINE // DATUM: {today_str}</div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -120,7 +128,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
     st.stop()
 
-# Sortering: Bull vs Bear samt Veckans Gasell (högst procentuell uppgång totalt)
+# Sortering: Bull vs Bear samt Veckans Gasell
 bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
 bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
 
@@ -129,17 +137,16 @@ if not bull_candidates:
 if not bear_candidates: 
     bear_candidates = market_data[-3:]
 
-# Veckans gasell (aktien med högst procentuell uppgång)
 gazelle = max(market_data, key=lambda x: x['pct'])
 
-# Delad skärm för Bull och Bear (visar max 3 stycken vardera)
+# Delad skärm för Bull och Bear (Topp 3)
 col_buy, col_sell = st.columns(2, gap="large")
 
 # ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
 with col_buy:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS (TOPP 3)</h4>", unsafe_allow_html=True)
-    st.write("Starkaste köpkandidaterna med trendgraf:")
+    st.write("Dagens starkaste köpkandidater:")
     
     for item in bull_candidates[:3]:
         st.markdown(f"""
@@ -165,14 +172,14 @@ with col_buy:
         if not openai_key:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
-            with st.spinner("AI vaskar fram bästa köpcasen..."):
+            with st.spinner("AI vaskar fram dagens bästa köpcasen..."):
                 market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bull_candidates[:3]])
                 client = OpenAI(api_key=openai_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
-                        {"role": "user", "content": f"Vaska fram de starkaste köpcasen bland dessa:\n{market_text}"}
+                        {"role": "user", "content": f"Vaska fram de starkaste köpcasen bland dessa för dagen:\n{market_text}"}
                     ]
                 )
                 st.success("AI-RAPPORT KLAR")
@@ -183,7 +190,7 @@ with col_buy:
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS (TOPP 3)</h4>", unsafe_allow_html=True)
-    st.write("Säljkandidater och rasrisker med trendgraf:")
+    st.write("Dagens säljkandidater och rasrisker:")
     
     for item in bear_candidates[:3]:
         st.markdown(f"""
@@ -209,7 +216,7 @@ with col_sell:
         if not openai_key:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
-            with st.spinner("AI analyserar säljsignaler..."):
+            with st.spinner("AI analyserar dagens säljsignaler..."):
                 market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates[:3]])
                 client = OpenAI(api_key=openai_key)
                 response = client.chat.completions.create(
