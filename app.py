@@ -257,4 +257,13 @@ gazelle_html = (
     f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
     f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
     f'</p>'
-    f'<hr style="border-color: #e
+    f'<hr style="border-color: #eab308; opacity: 0.3;">'
+    f'<b>📊 Gasell-Rapport & Nivåer:</b><br>'
+    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]}<br>'
+    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
+    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
+    f'• <i>Status: Hög volatilitet och brett prisintervall ger stor potential för snabba rörelser.</i>'
+    f'</div>'
+)
+st.markdown(gazelle_html, unsafe_allow_html=True)
+st.line_chart(gazelle['history'], height=160)
