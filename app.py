@@ -3,7 +3,6 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import ta
-import plotly.express as px
 from openai import OpenAI
 
 # Sidkonfiguration
@@ -84,7 +83,7 @@ for ticker in tickers_list:
             "rsi": rsi_val,
             "high_20": high_20,
             "low_20": low_20,
-            "history": df.tail(10).reset_index(),
+            "history": close_ser.tail(10),
             "logo": logo_url
         })
     except Exception:
@@ -106,7 +105,7 @@ col_buy, col_sell = st.columns(2, gap="large")
 with col_buy:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS</h4>", unsafe_allow_html=True)
-    st.write("Starkaste köpkandidaterna med zoomed sparkline-graf:")
+    st.write("Starkaste köpkandidaterna med trendgraf:")
     
     for item in bull_candidates[:4]:
         st.markdown(f"""
@@ -125,16 +124,7 @@ with col_buy:
             </div>
         """, unsafe_allow_html=True)
         
-        fig = px.line(item['history'], x='Date', y='Close', height=140)
-        fig.update_traces(line_color='#38bdf8', line_width=2.5)
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=5, b=5),
-            xaxis=dict(showgrid=False, title=None),
-            yaxis=dict(showgrid=True, gridcolor='#1e293b', title=None),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.line_chart(item['history'], height=130)
 
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
     
@@ -160,7 +150,7 @@ with col_buy:
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS</h4>", unsafe_allow_html=True)
-    st.write("Säljkandidater och rasrisker med zoomed sparkline-graf:")
+    st.write("Säljkandidater och rasrisker med trendgraf:")
     
     for item in bear_candidates[:4]:
         st.markdown(f"""
@@ -179,16 +169,7 @@ with col_sell:
             </div>
         """, unsafe_allow_html=True)
         
-        fig = px.line(item['history'], x='Date', y='Close', height=140)
-        fig.update_traces(line_color='#f43f5e', line_width=2.5)
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=5, b=5),
-            xaxis=dict(showgrid=False, title=None),
-            yaxis=dict(showgrid=True, gridcolor='#1e293b', title=None),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)'
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        st.line_chart(item['history'], height=130)
 
     run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
     
