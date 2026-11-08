@@ -12,7 +12,6 @@ EMAIL_SENDER = os.environ.get("EMAIL_SENDER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
 
-# Bred lista för att skanna av marknaden (Sverige småbolag/tillväxt + USA momentum)
 tickers = [
     "VOLV-B.ST", "ERIC-B.ST", "SSAB-B.ST", "SBB-B.ST", "TELIA.ST",
     "SINCH.ST", "NVDA", "TSLA", "AMD", "PLTR", "SOFI", "MARA", "RIOT"
@@ -70,7 +69,7 @@ Formatera rapporten professionellt på svenska med:
 1. **Marknadsläge & Omvärldsanalys** (Kort lägesrapport)
 2. **Top 5 Hårdgranskade Kandidater** där varje aktie innehåller:
    - **Bolag & Ticker**
-   - **Exakt Köpläge (När är den i köpläge?):** (T.ex. "Aktivt köpläge vid inbrytning i intervallet X-Y med stöd av...")
+   - **Exakt Köpläge (När är den i köpläge?):**
    - **Entry-nivå**
    - **Stop-Loss & Risk (%)**
    - **Target / Målkurs (+10-15%)**
@@ -89,8 +88,12 @@ response = client.chat.completions.create(
 
 ai_report = response.choices[0].message.content
 
-print("3. Skickar e-postrapport (Högrisk)...")
+# Skriv ut rapporten direkt i GitHub-loggen
+print("\n" + "="*50 + "\nHÖGRISK-RAPPORT:\n" + "="*50 + "\n")
+print(ai_report)
+print("\n" + "="*50 + "\n")
 
+print("3. Skickar e-postrapport (Högrisk)...")
 if EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER:
     msg = MIMEMultipart()
     msg['From'] = EMAIL_SENDER
@@ -104,6 +107,6 @@ if EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER:
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
         server.quit()
-        print("Högrisk-rapport skickad!")
+        print("Högrisk-rapport skickad via e-post!")
     except Exception as e:
         print(f"E-postfel: {e}")
