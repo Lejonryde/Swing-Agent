@@ -82,4 +82,43 @@ col_buy, col_sell = st.columns(2, gap="large")
 with col_buy:
     st.markdown("""
         <div class="bull-box">
-            <h2 style='color: #38bdf8; margin: 0
+            <h2 style='color: #38bdf8; margin: 0; font-weight: 800;'>🔵 DAGENS FÖRETAG</h2>
+            <h4 style='color: #94a3b8; margin-top: 5px; text-transform: uppercase;'>KÖP & BREAKOUTS (FREDAGSSLUT)</h4>
+            <p style='color: #cbd5e1; font-size: 0.9rem;'>Analyserar fredagens stängningskurser och volymutbrott.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    run_buy = st.button("🚀 KÖP-ANALYS", use_container_width=True, key="btn_buy")
+    
+    if run_buy:
+        if not openai_key:
+            st.error("❌ Fyll i OpenAI API-nyckel!")
+        else:
+            stock_data_list = []
+            logo_urls = []
+            with st.spinner("Hämtar fredagsdata och logotyper..."):
+                for ticker in tickers_list:
+                    try:
+                        stock = yf.Ticker(ticker)
+                        df = stock.history(period="1mo")
+                        if df.empty or len(df) < 5:
+                            continue
+                        
+                        friday_close = df.iloc[-1]['Close']
+                        prev_close = df.iloc[-2]['Close']
+                        pct_change = ((friday_close - prev_close) / prev_close) * 100
+                        high_20 = df['High'].max()
+                        valuta = "SEK" if ticker.endswith(".ST") else "USD"
+                        rsi = ta.momentum.rsi(df['Close'], window=14).iloc[-1]
+                        
+                        stock_data_list.append(f"Ticker: {ticker} | Fredag Slutkurs: {friday_close:.2f} {valuta} ({pct_change:+.2f}%) | 20d Högsta: {high_20:.2f} | RSI: {rsi:.1f}")
+                        
+                        info = stock.info
+                        logo_url = info.get('logo_url', '')
+                        if logo_url:
+                            logo_urls.append((ticker, logo_url))
+                    except:
+                        continue
+                
+                if logo_urls:
+                    cols_logo = st.columns(len(logo_urls) if len(logo_urls) <= 5
