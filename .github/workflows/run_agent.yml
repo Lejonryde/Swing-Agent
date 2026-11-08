@@ -1,2 +1,28 @@
+name: Run AI Swing Agent
+
+on:
+  workflow_dispatch:   # <--- Denna rad ger dig knappen "Run workflow"!
+  push:
+    branches: [ main ]
+
+jobs:
+  run-agent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ladda ner koden
+        uses: actions/checkout@v4
+
+      - name: Installera Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Installera beroenden
+        run: pip install yfinance pandas ta openai
+
+      - name: Kör agenten
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python agent.py
 - name: Kör agenten
   run: python agent.py
