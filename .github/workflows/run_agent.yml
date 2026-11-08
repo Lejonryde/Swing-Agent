@@ -1,7 +1,7 @@
 name: Run AI Swing Agent
 
 on:
-  workflow_dispatch:   # <--- Denna rad ger dig knappen "Run workflow"!
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -24,5 +24,3 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python agent.py
-- name: Kör agenten
-  run: python agent.py
