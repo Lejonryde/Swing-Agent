@@ -1,4 +1,4 @@
-name: Kör AI Swing Agent
+name: Kör AI Swing Agent (E-post)
 
 on:
   schedule:
@@ -19,12 +19,13 @@ jobs:
 
       - name: Installera beroenden
         run: |
-          pip install yfinance pandas ta openai discord.py
+          pip install yfinance pandas ta openai
 
       - name: Kör agenten
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-          DISCORD_CHANNEL_ID: ${{ secrets.DISCORD_CHANNEL_ID }}
+          EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          MAIL_RECEIVER: ${{ secrets.MAIL_RECEIVER }}
         run: |
           python agent.py
