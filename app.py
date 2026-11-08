@@ -13,50 +13,49 @@ st.set_page_config(
 )
 
 # Mörk styling med inramad SWINGKING-logotyp
-st.markdown(
-    "<style>"
-    "html, body, [data-testid='stAppViewContainer'] {"
-    "    background-color: #0b0e14 !important;"
-    "    color: #e0e6ed !important;"
-    "}"
-    "[data-testid='stSidebar'] {"
-    "    background-color: #121824 !important;"
-    "}"
-    ".logo-header-box {"
-    "    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);"
-    "    border: 2px solid #38bdf8;"
-    "    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);"
-    "    border-radius: 12px;"
-    "    padding: 20px 30px;"
-    "    margin-bottom: 25px;"
-    "    text-align: center;"
-    "}"
-    ".logo-title {"
-    "    font-size: 2.8rem;"
-    "    font-weight: 900;"
-    "    letter-spacing: 3px;"
-    "    background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);"
-    "    -webkit-background-clip: text;"
-    "    -webkit-text-fill-color: transparent;"
-    "    margin: 0;"
-    "}"
-    ".logo-sub {"
-    "    color: #94a3b8;"
-    "    font-size: 0.95rem;"
-    "    letter-spacing: 2px;"
-    "    margin-top: 5px;"
-    "    text-transform: uppercase;"
-    "}"
-    ".stock-card {"
-    "    background: #161b22;"
-    "    border: 1px solid #30363d;"
-    "    border-radius: 8px;"
-    "    padding: 12px;"
-    "    margin-bottom: 8px;"
-    "}"
-    "</style>",
-    unsafe_allow_html=True
-)
+st.markdown("""
+<style>
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #0b0e14 !important;
+        color: #e0e6ed !important;
+    }
+    [data-testid="stSidebar"] {
+        background-color: #121824 !important;
+    }
+    .logo-header-box {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        border: 2px solid #38bdf8;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+        border-radius: 12px;
+        padding: 20px 30px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    .logo-title {
+        font-size: 2.8rem;
+        font-weight: 900;
+        letter-spacing: 3px;
+        background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin: 0;
+    }
+    .logo-sub {
+        color: #94a3b8;
+        font-size: 0.95rem;
+        letter-spacing: 2px;
+        margin-top: 5px;
+        text-transform: uppercase;
+    }
+    .stock-card {
+        background: #161b22;
+        border: 1px solid #30363d;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Inramad SWINGKING Header
 st.markdown("""
@@ -142,14 +141,13 @@ with col_buy:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        
         st.line_chart(item['history'], height=130)
 
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
     
     if run_buy:
         if not openai_key:
-            st.error("❌ Fyll i OpenAI API-nyckel!")
+            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI vaskar fram bästa köpcasen..."):
                 market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bull_candidates])
@@ -187,11 +185,23 @@ with col_sell:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        
         st.line_chart(item['history'], height=130)
 
     run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
     
     if run_sell:
         if not openai_key:
-            st.error("❌ Fyll
+            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
+        else:
+            with st.spinner("AI analyserar säljsignaler..."):
+                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates])
+                client = OpenAI(api_key=openai_key)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
+                        {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
+                    ]
+                )
+                st.success("AI-RAPPORT KLAR")
+                st.markdown(response.choices[0].message.content)
