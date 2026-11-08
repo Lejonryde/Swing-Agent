@@ -6,7 +6,7 @@ from openai import OpenAI
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-# 100% fungerande tickers på Yahoo Finance
+# Bred lista med stabila tickers
 tickers = [
     # Sverige (SEK)
     "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "SSAB-B.ST", "SBB-B.ST", "TELIA.ST",
@@ -22,7 +22,7 @@ for ticker in tickers:
         stock = yf.Ticker(ticker)
         df = stock.history(period="6mo")
         
-        if df.empty or len(df) < 30:
+        if df.empty or len(df) < 10:
             continue
 
         latest = df.iloc[-1]
@@ -31,22 +31,18 @@ for ticker in tickers:
         is_swedish = ticker.endswith(".ST")
         valuta = "SEK" if is_swedish else "USD"
         
-        # Breda filter så att vi garanterat får träffar
-        min_price = 5.0 if is_swedish else 2.0
-        max_price = 1000.0 if is_swedish else 200.0
+        # Beräkna tekniska indikatorer
+        sma_50_series = ta.trend.sma_indicator(df['Close'], window=min(50, len(df)))
+        rsi_series = ta.momentum.rsi(df['Close'], window=min(14, len(df)))
         
-        if not (min_price <= close_price <= max_price):
-            continue
-
-        df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
-        df['RSI'] = ta.momentum.rsi(df['Close'], window=14)
+        sma_50 = sma_50_series.iloc[-1] if not sma_50_series.empty and pd.notna(sma_50_series.iloc[-1]) else close_price
+        rsi = rsi_series.iloc[-1] if not rsi_series.empty and pd.notna(rsi_series.iloc[-1]) else 50.0
         
-        sma_50 = latest['SMA_50'] if pd.notna(latest['SMA_50']) else close_price
-        rsi = latest['RSI'] if pd.notna(latest['RSI']) else 50.0
+        # Risk-hantering: Dynamisk stop-loss
+        recent_low = df['Low'].iloc[-5:].min()
+        stop_loss = recent_low * 0.98 if recent_low < close_price else close_price * 0.95
         
-        stop_loss = df['Low'].iloc[-3:].min() * 0.985
         risk_amount = close_price - stop_loss
-        
         if risk_amount <= 0:
             stop_loss = close_price * 0.95
             risk_amount = close_price - stop_loss
@@ -65,10 +61,12 @@ for ticker in tickers:
         )
         stock_summaries.append(summary)
     except Exception as e:
+        print(f"Kunde inte hämta {ticker}: {e}")
         continue
 
 if not stock_summaries:
-    raise RuntimeError("Inga aktier matchade filtren.")
+    print("Varning: Inga sammanfattningar kunde skapas.")
+    exit(0)
 
 market_data_text = "\n".join(stock_summaries)
 
@@ -83,7 +81,7 @@ Här är aktuell kursdata för godkända aktier:
 Välj ut de TOPP 3 absolut bästa kandidaterna för en swingtrade (horisont 3-10 dagar).
 Ranka dem (1, 2, 3) och ange för varje aktie:
 - Bolag & Ticker
-- Exakt Entry, Stop-Loss och Take-Profit (Målkurs)
+- Exakt Entry (Nuvarande pris), Stop-Loss och Take-Profit (Målkurs)
 - Risk/Reward-förhållande och procentuell upp-/nedsida
 - En kort och vass motivering baserat på RSI och trend.
 
