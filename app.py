@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -102,16 +103,7 @@ st.markdown("""
 # Dagens datum
 today_str = datetime.now().strftime("%Y-%m-%d")
 
-# Inramad SWINGKINGS Logotyp
-st.markdown(
-    f'<div class="logo-header-box">'
-    f'<h1 class="logo-title">👑 SWINGKINGS</h1>'
-    f'<div class="logo-sub">DAGLIG QUANT ENGINE // DATUM: {today_str}</div>'
-    f'</div>',
-    unsafe_allow_html=True
-)
-
-# Sidebar
+# Sidebar - definieras först så variablerna finns tillgängliga direkt
 st.sidebar.header("🕹️ CONTROL PANEL")
 api_key_input = st.sidebar.text_input("OpenAI API Key", type="password", key="openai_api_key_field")
 openai_key = api_key_input if api_key_input else os.environ.get("OPENAI_API_KEY", "")
@@ -123,6 +115,15 @@ custom_tickers = st.sidebar.text_area(
     "TELIA.ST, SINCH.ST, NVDA, TSLA, AMD, PLTR"
 )
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
+
+# Inramad SWINGKINGS Logotyp
+st.markdown(
+    f'<div class="logo-header-box">'
+    f'<h1 class="logo-title">👑 SWINGKINGS</h1>'
+    f'<div class="logo-sub">DAGLIG QUANT ENGINE // DATUM: {today_str}</div>'
+    f'</div>',
+    unsafe_allow_html=True
+)
 
 # Hämtar marknadsdata
 market_data = []
