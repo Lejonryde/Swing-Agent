@@ -3,13 +3,15 @@ import yfinance as yf
 import pandas as pd
 import ta
 from openai import OpenAI
-import discord
-import asyncio
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
-# Hämtar nycklarna säkert från GitHub Secrets
+# Hämtar nycklar och e-postinställningar säkert från GitHub Secrets
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
-DISCORD_CHANNEL_ID = int(os.environ.get("DISCORD_CHANNEL_ID"))
+EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
+MAIL_RECEIVER = os.environ.get("MAIL_RECEIVER")
 
 tickers = [
     "ACAST.ST", "CAMX.ST", "CRADB.ST", "ADDT.ST", "AFRY.ST"
@@ -66,7 +68,7 @@ Investeraren siktar på 7-10% avkastning per affär (horisont 7-10 dagar).
 Här är dagsdata för tillväxtbolag:
 {market_data_text}
 
-Välj ut den 1 absolut hetaste kandidaten, föreslå exakt Entry, Stop-Loss och Take-Profit, samt en kort riskvarning. Håll det koncist och lättläst för Discord.
+Välj ut den 1 absolut hetaste kandidaten, föreslå exakt Entry, Stop-Loss och Take-Profit, samt en kort riskvarning. Skriv en komplett, lättläst rapport.
 """
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -81,24 +83,24 @@ response = client.chat.completions.create(
 
 ai_report = response.choices[0].message.content
 
-# Skicka till Discord
-intents = discord.Intents.default()
-bot = discord.Client(intents=intents)
+# ----------------------------------------------------
+# Skicka rapporten via e-post
+# ----------------------------------------------------
+print("3. Skickar rapporten via e-post...")
 
-@bot.event
-async def on_ready():
-    print(f"Boten är inloggad som {bot.user}")
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
-    if channel:
-        message = f"🤖 **AI SWING-RAPPORT** 🤖\n\n{ai_report}"
-        await channel.send(message)
-        print("[✓] Rapporten har skickats till din Discord-kanal!")
-    else:
-        print("[X] Hittade inte kanalen.")
-    await bot.close()
+msg = MIMEMultipart()
+msg['From'] = EMAIL_ADDRESS
+msg['To'] = MAIL_RECEIVER
+msg['Subject'] = "🤖 Din automatiska AI Swing-rapport"
 
-async def main():
-    async with bot:
-        await bot.start(DISCORD_BOT_TOKEN)
+msg.attach(MIMEText(ai_report, 'plain', 'utf-8'))
 
-asyncio.run(main())
+try:
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    server.sendmail(EMAIL_ADDRESS, MAIL_RECEIVER, msg.as_string())
+    server.quit()
+    print("[✓] E-postrapporten har skickats framgångsrikt!")
+except Exception as e:
+    print(f"[X] Kunde inte skicka e-post: {e}")
