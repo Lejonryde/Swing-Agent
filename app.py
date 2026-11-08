@@ -5,7 +5,7 @@ import pandas as pd
 import ta
 from openai import OpenAI
 
-# Sidkonfiguration utan "terminal"
+# Sidkonfiguration
 st.set_page_config(
     page_title="SWINGKING",
     page_icon="👑",
@@ -58,7 +58,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Inramad SWINGKING Header / Logotyp
+# Inramad SWINGKING Header
 st.markdown("""
     <div class="logo-header-box">
         <h1 class="logo-title">👑 SWINGKING</h1>
@@ -194,12 +194,4 @@ with col_sell:
     
     if run_sell:
         if not openai_key:
-            st.error("❌ Fyll i OpenAI API-nyckel!")
-        else:
-            with st.spinner("AI analyserar säljsignaler..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut
+            st.error("❌ Fyll
