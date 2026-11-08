@@ -5,14 +5,14 @@ import pandas as pd
 import ta
 from openai import OpenAI
 
-# Sidkonfiguration
+# Sidkonfiguration utan "terminal"
 st.set_page_config(
-    page_title="SWING KING // TERMINAL",
+    page_title="SWINGKING",
     page_icon="👑",
     layout="wide"
 )
 
-# Mörk terminalstyling med tight layout
+# Mörk styling med inramad SWINGKING-logotyp
 st.markdown(
     "<style>"
     "html, body, [data-testid='stAppViewContainer'] {"
@@ -22,10 +22,30 @@ st.markdown(
     "[data-testid='stSidebar'] {"
     "    background-color: #121824 !important;"
     "}"
-    ".brand-title {"
-    "    font-size: 2.2rem;"
-    "    font-weight: 800;"
-    "    color: #38bdf8;"
+    ".logo-header-box {"
+    "    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);"
+    "    border: 2px solid #38bdf8;"
+    "    box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);"
+    "    border-radius: 12px;"
+    "    padding: 20px 30px;"
+    "    margin-bottom: 25px;"
+    "    text-align: center;"
+    "}"
+    ".logo-title {"
+    "    font-size: 2.8rem;"
+    "    font-weight: 900;"
+    "    letter-spacing: 3px;"
+    "    background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);"
+    "    -webkit-background-clip: text;"
+    "    -webkit-text-fill-color: transparent;"
+    "    margin: 0;"
+    "}"
+    ".logo-sub {"
+    "    color: #94a3b8;"
+    "    font-size: 0.95rem;"
+    "    letter-spacing: 2px;"
+    "    margin-top: 5px;"
+    "    text-transform: uppercase;"
     "}"
     ".stock-card {"
     "    background: #161b22;"
@@ -38,10 +58,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Huvudrubrik
-st.markdown('<div class="brand-title">👑 SWING KING TERMINAL</div>', unsafe_allow_html=True)
-st.caption("QUANT ENGINE // BREAKOUT & EXIT PROTOCOL")
-st.markdown("---")
+# Inramad SWINGKING Header / Logotyp
+st.markdown("""
+    <div class="logo-header-box">
+        <h1 class="logo-title">👑 SWINGKING</h1>
+        <div class="logo-sub">QUANT ENGINE // BREAKOUT & EXIT PROTOCOL</div>
+    </div>
+""", unsafe_allow_html=True)
 
 # Sidebar
 st.sidebar.header("🕹️ CONTROL PANEL")
@@ -72,9 +95,6 @@ for ticker in tickers_list:
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
-        clean_name = ticker.split('.')[0].lower()
-        logo_url = f"https://logo.clearbit.com/{clean_name}.com"
-        
         market_data.append({
             "ticker": ticker,
             "close": latest_close,
@@ -83,8 +103,7 @@ for ticker in tickers_list:
             "rsi": rsi_val,
             "high_20": high_20,
             "low_20": low_20,
-            "history": close_ser.tail(10),
-            "logo": logo_url
+            "history": close_ser.tail(10)
         })
     except Exception:
         continue
@@ -183,9 +202,4 @@ with col_sell:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
-                        {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
+                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut
