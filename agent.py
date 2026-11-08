@@ -13,11 +13,6 @@ EMAIL_ADDRESS = os.environ.get("EMAIL_ADDRESS")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 MAIL_RECEIVER = os.environ.get("MAIL_RECEIVER")
 
-# Kontrollera att e-postinställningar finns
-if not all([EMAIL_ADDRESS, EMAIL_PASSWORD, MAIL_RECEIVER]):
-    raise ValueError("FEL: En eller flera e-posthemligheter (EMAIL_ADDRESS, EMAIL_PASSWORD, MAIL_RECEIVER) saknas!")
-
-# Mix av svenska storföretag och amerikanska tillväxt-/teknikaktier
 tickers = [
     "VOLV-B.ST", "ERIC-B.ST", "AZN.ST",
     "NVDA", "TSLA", "AMD", "PLTR", "AAPL"
@@ -32,7 +27,6 @@ for ticker in tickers:
         df = stock.history(period="6mo")
         
         if df.empty or len(df) < 50:
-            print(f"  [-] Ingen tillräcklig data för {ticker}")
             continue
 
         df['SMA_50'] = ta.trend.sma_indicator(df['Close'], window=50)
@@ -63,13 +57,8 @@ for ticker in tickers:
             f"RSI: {rsi:.2f} | SMA 50: {sma_50:.2f}"
         )
         stock_summaries.append(summary)
-        print(f"  [✓] Hittade data för {ticker}")
     except Exception as e:
-        print(f"  [X] Fel vid hämtning av {ticker}: {e}")
         continue
-
-if not stock_summaries:
-    raise RuntimeError("FEL: Inga aktier kunde behandlas eller uppfyllde kraven. Avbryter utskick.")
 
 market_data_text = "\n".join(stock_summaries)
 
@@ -82,8 +71,7 @@ Här är aktuell kursdata för utvalda svenska och amerikanska aktier:
 {market_data_text}
 
 Välj ut den 1 absolut hetaste kandidaten för en swingtrade (horisont 5-10 dagar).
-Ange exakt Entry, Stop-Loss, Take-Profit och en kort motivering.
-Write the report in Swedish.
+Ange exakt Entry, Stop-Loss, Take-Profit och en kort motivering. Skriv rapporten på svenska.
 """
 
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -98,19 +86,29 @@ response = client.chat.completions.create(
 
 ai_report = response.choices[0].message.content
 
-print(f"\n3. Förbereder e-postutskick till {MAIL_RECEIVER}...")
+# ----------------------------------------------------
+# Skriv ut AI-rapporten i loggen FÖRE e-postutskicket
+# ----------------------------------------------------
+print("\n" + "="*50)
+print("🤖 AI SWING-RAPPORT")
+print("="*50)
+print(ai_report)
+print("="*50 + "\n")
 
-msg = MIMEMultipart()
-msg['From'] = EMAIL_ADDRESS
-msg['To'] = MAIL_RECEIVER
-msg['Subject'] = "🤖 Din automatiska AI Swing-rapport (SE & US)"
+# Try-except runt e-postutskicket så att rapporten alltid skrivs ut oavsett om mejlet kraschar
+try:
+    print(f"3. Förbereder e-postutskick till {MAIL_RECEIVER}...")
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = MAIL_RECEIVER
+    msg['Subject'] = "🤖 Din automatiska AI Swing-rapport"
+    msg.attach(MIMEText(ai_report, 'plain', 'utf-8'))
 
-msg.attach(MIMEText(ai_report, 'plain', 'utf-8'))
-
-server = smtplib.SMTP('smtp.gmail.com', 587)
-server.starttls()
-server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-server.sendmail(EMAIL_ADDRESS, MAIL_RECEIVER, msg.as_string())
-server.quit()
-
-print(f"[✓] E-postrapporten har skickats framgångsrikt till {MAIL_RECEIVER}!")
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+    server.sendmail(EMAIL_ADDRESS, MAIL_RECEIVER, msg.as_string())
+    server.quit()
+    print("[✓] E-postrapporten har skickats framgångsrikt!")
+except Exception as e:
+    print(f"[X] E-postutskick misslyckades: {e}")
