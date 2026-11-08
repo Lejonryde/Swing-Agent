@@ -7,12 +7,12 @@ from openai import OpenAI
 
 # Sidkonfiguration
 st.set_page_config(
-    page_title="SWINGKING",
+    page_title="SWINGKINGS",
     page_icon="👑",
     layout="wide"
 )
 
-# Mörk styling med inramad SWINGKING-logotyp
+# Mörk styling med inramad SWINGKINGS-logotyp
 st.markdown("""
 <style>
     html, body, [data-testid="stAppViewContainer"] {
@@ -25,16 +25,16 @@ st.markdown("""
     .logo-header-box {
         background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
         border: 2px solid #38bdf8;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
-        border-radius: 12px;
-        padding: 20px 30px;
+        box-shadow: 0 0 25px rgba(56, 189, 248, 0.35);
+        border-radius: 14px;
+        padding: 25px 30px;
         margin-bottom: 25px;
         text-align: center;
     }
     .logo-title {
-        font-size: 2.8rem;
+        font-size: 3rem;
         font-weight: 900;
-        letter-spacing: 3px;
+        letter-spacing: 4px;
         background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -43,8 +43,8 @@ st.markdown("""
     .logo-sub {
         color: #94a3b8;
         font-size: 0.95rem;
-        letter-spacing: 2px;
-        margin-top: 5px;
+        letter-spacing: 2.5px;
+        margin-top: 8px;
         text-transform: uppercase;
     }
     .stock-card {
@@ -54,13 +54,22 @@ st.markdown("""
         padding: 12px;
         margin-bottom: 8px;
     }
+    .gazelle-box {
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 2px solid #22c55e;
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.25);
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 35px;
+        margin-bottom: 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Inramad SWINGKING Header
+# Inramad SWINGKINGS Logotyp
 st.markdown("""
     <div class="logo-header-box">
-        <h1 class="logo-title">👑 SWINGKING</h1>
+        <h1 class="logo-title">👑 SWINGKINGS</h1>
         <div class="logo-sub">QUANT ENGINE // BREAKOUT & EXIT PROTOCOL</div>
     </div>
 """, unsafe_allow_html=True)
@@ -107,7 +116,11 @@ for ticker in tickers_list:
     except Exception:
         continue
 
-# Sortering: Bull vs Bear
+if not market_data:
+    st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
+    st.stop()
+
+# Sortering: Bull vs Bear samt Veckans Gasell (högst procentuell uppgång totalt)
 bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
 bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
 
@@ -116,16 +129,19 @@ if not bull_candidates:
 if not bear_candidates: 
     bear_candidates = market_data[-3:]
 
-# Delad skärm
+# Veckans gasell (aktien med högst procentuell uppgång)
+gazelle = max(market_data, key=lambda x: x['pct'])
+
+# Delad skärm för Bull och Bear (visar max 3 stycken vardera)
 col_buy, col_sell = st.columns(2, gap="large")
 
 # ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
 with col_buy:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS (TOPP 3)</h4>", unsafe_allow_html=True)
     st.write("Starkaste köpkandidaterna med trendgraf:")
     
-    for item in bull_candidates[:4]:
+    for item in bull_candidates[:3]:
         st.markdown(f"""
             <div class="stock-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -141,7 +157,7 @@ with col_buy:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=130)
+        st.line_chart(item['history'], height=120)
 
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
     
@@ -150,13 +166,13 @@ with col_buy:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI vaskar fram bästa köpcasen..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bull_candidates])
+                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bull_candidates[:3]])
                 client = OpenAI(api_key=openai_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
-                        {"role": "user", "content": f"Vaska fram de 3 starkaste köpcasen bland dessa:\n{market_text}"}
+                        {"role": "user", "content": f"Vaska fram de starkaste köpcasen bland dessa:\n{market_text}"}
                     ]
                 )
                 st.success("AI-RAPPORT KLAR")
@@ -166,10 +182,10 @@ with col_buy:
 # ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS (TOPP 3)</h4>", unsafe_allow_html=True)
     st.write("Säljkandidater och rasrisker med trendgraf:")
     
-    for item in bear_candidates[:4]:
+    for item in bear_candidates[:3]:
         st.markdown(f"""
             <div class="stock-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -185,7 +201,7 @@ with col_sell:
                 </div>
             </div>
         """, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=130)
+        st.line_chart(item['history'], height=120)
 
     run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
     
@@ -194,14 +210,31 @@ with col_sell:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI analyserar säljsignaler..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates])
+                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates[:3]])
                 client = OpenAI(api_key=openai_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
-                        {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
+                        {"role": "user", "content": f"Peka ut de aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
                     ]
                 )
                 st.success("AI-RAPPORT KLAR")
                 st.markdown(response.choices[0].message.content)
+
+# ==================== VECKANS GASELL ====================
+st.markdown("---")
+st.markdown(f"""
+    <div class="gazelle-box">
+        <h2 style='color: #22c55e; margin: 0;'>🦌 VECKANS GASELL</h2>
+        <h4 style='color: #38bdf8; margin-top: 5px;'>HÖGST MOMENTUM & AVKASTNING: {gazelle['ticker']}</h4>
+        <p style='font-size: 1.1rem; margin-bottom: 5px;'>
+            <b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} 
+            <span style='color: #22c55e; font-weight: bold;'>({gazelle['pct']:+.2f}%)</span> | 
+            <b>RSI:</b> {gazelle['rsi']:.1f} | 
+            <b>20d Högsta:</b> {gazelle['high_20']:.2f} {gazelle['valuta']}
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
+st.line_chart(gazelle['history'], height=160)
