@@ -85,12 +85,13 @@ st.markdown("""
 today_str = datetime.now().strftime("%Y-%m-%d")
 
 # Inramad SWINGKINGS Logotyp
-st.markdown(f"""
-    <div class="logo-header-box">
-        <h1 class="logo-title">👑 SWINGKINGS</h1>
-        <div class="logo-sub">DAGLIG QUANT ENGINE // DATUM: {today_str}</div>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown(
+    f'<div class="logo-header-box">'
+    f'<h1 class="logo-title">👑 SWINGKINGS</h1>'
+    f'<div class="logo-sub">DAGLIG QUANT ENGINE // DATUM: {today_str}</div>'
+    f'</div>',
+    unsafe_allow_html=True
+)
 
 # Sidebar
 st.sidebar.header("🕹️ CONTROL PANEL")
@@ -169,19 +170,18 @@ with col_buy:
     st.write("Dagens starkaste köpkandidater:")
     
     for item in bull_candidates[:3]:
-        st.markdown(f"""
-            <div class="stock-card">
-                <div>
-                    <h3 style="margin: 0; color: #38bdf8;">⚡ {item['ticker']}</h3>
-                    <p style="margin: 2px 0; font-size: 1rem;">
-                        <b>{item['close']:.2f} {item['valuta']}</b> 
-                        <span style="color: #22c55e; font-weight: bold;">({item['pct']:+.2f}%)</span> 
-                        | RSI: <b>{item['rsi']:.1f}</b>
-                    </p>
-                    <small style="color: #94a3b8;">20d Högsta: {item['high_20']:.2f} {item['valuta']}</small>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
+        st.markdown(
+            f'<div class="stock-card">'
+            f'<div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3>'
+            f'<p style="margin: 2px 0; font-size: 1rem;">'
+            f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
+            f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
+            f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
+            f'<small style="color: #94a3b8;">20d Högsta: {item["high_20"]:.2f} {item["valuta"]}</small>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
         st.line_chart(item['history'], height=120)
 
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
@@ -211,10 +211,74 @@ with col_sell:
     st.write("Dagens säljkandidater och rasrisker:")
     
     for item in bear_candidates[:3]:
-        st.markdown(f"""
-            <div class="stock-card">
-                <div>
-                    <h3 style="margin: 0; color: #f87171;">💀 {item['ticker']}</h3>
-                    <p style="margin: 2px 0; font-size: 1rem;">
-                        <b>{item['close']:.2f} {item['valuta']}</b> 
-                        <span style="color: #ef4444; font-weight: bold
+        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
+        st.markdown(
+            f'<div class="stock-card">'
+            f'<div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3>'
+            f'<p style="margin: 2px 0; font-size: 1rem;">'
+            f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
+            f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
+            f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
+            f'<small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
+        st.line_chart(item['history'], height=120)
+
+    run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
+    
+    if run_sell:
+        if not openai_key:
+            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
+        else:
+            with st.spinner("AI analyserar dagens säljsignaler..."):
+                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
+                client = OpenAI(api_key=openai_key)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
+                        {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
+                    ]
+                )
+                st.success("AI-RAPPORT KLAR")
+                st.markdown(response.choices[0].message.content)
+
+# ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
+gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
+st.markdown("---")
+st.markdown(
+    f'<div class="gazelle-box">'
+    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL OUTSIDER)</h2>'
+    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
+    f'<p style="font-size: 1.1rem; margin-bottom: 5px;">'
+    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
+    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
+    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
+    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
+    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
+    f'</p></div>',
+    unsafe_allow_html=True
+)
+
+st.line_chart(gazelle['history'], height=160)
+
+# ==================== DAGENS EKONOMIRUBRIKER ====================
+st.markdown(
+    '<div class="news-box">'
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER</h3>',
+    unsafe_allow_html=True
+)
+
+try:
+    feed = feedparser.parse("https://news.google.com/rss/search?q=aktier+borsen+ekonomi+naringsliv&hl=sv&gl=SE&ceid=SE:sv")
+    entries = feed.entries[:5]
+    if entries:
+        for entry in entries:
+            st.markdown(f"- [{entry.title}]({entry.link})")
+    else:
+        st.info("Inga nya rubriker tillgängliga för tillfället.")
+except Exception:
+    st.info("Kunde inte ladda finansiella nyhetsrubriker just nu.")
+
+st.markdown('</div>', unsafe_allow_html=True)
