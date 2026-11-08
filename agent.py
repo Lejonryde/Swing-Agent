@@ -14,7 +14,7 @@ EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 MAIL_RECEIVER = os.environ.get("MAIL_RECEIVER")
 
 tickers = [
-    "ACAST.ST", "CAMX.ST", "CRADB.ST", "ADDT.ST", "AFRY.ST"
+    "VOLV-B.ST", "HM-B.ST", "ERIC-B.ST", "SAND.ST", "AZN.ST"
 ]
 
 print("1. Skannar tillväxtbolag och beräknar indikatorer...")
@@ -84,7 +84,7 @@ response = client.chat.completions.create(
 ai_report = response.choices[0].message.content
 
 # ----------------------------------------------------
-# Skicka rapporten via e-post
+# Skicka rapporten via e-post (utan skyddande try-except)
 # ----------------------------------------------------
 print("3. Skickar rapporten via e-post...")
 
@@ -95,15 +95,10 @@ msg['Subject'] = "🤖 Din automatiska AI Swing-rapport"
 
 msg.attach(MIMEText(ai_report, 'plain', 'utf-8'))
 
-try:
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
-    server.sendmail(EMAIL_ADDRESS, MAIL_RECEIVER, msg.as_string())
-    server.quit()
-    print("[✓] E-postrapporten har skickats framgångsrikt!")
-except Exception as e:
-    print(f"[X] Kunde inte skicka e-post: {e}")
-    tickers = [
-    "VOLV-B.ST", "HM-B.ST", "ERIC-B.ST", "SAND.ST", "AZN.ST"
-
+# Om e-postutskicket misslyckas kraschar skriptet direkt och visar felet i loggen
+server = smtplib.SMTP('smtp.gmail.com', 587)
+server.starttls()
+server.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+server.sendmail(EMAIL_ADDRESS, MAIL_RECEIVER, msg.as_string())
+server.quit()
+print("[✓] E-postrapporten har skickats framgångsrikt!")
