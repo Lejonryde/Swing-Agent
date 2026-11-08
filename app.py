@@ -94,7 +94,7 @@ custom_tickers = st.sidebar.text_area(
 )
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 
-# Hämtar marknadsdata och beräknar volatilitet (spann mellan högsta och lägsta i %)
+# Hämtar marknadsdata
 market_data = []
 for ticker in tickers_list:
     try:
@@ -111,7 +111,6 @@ for ticker in tickers_list:
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
-        # Volatilitetsmått: procenter mellan 20d lägsta och högsta
         volatility_spread = ((high_20 - low_20) / low_20) * 100
         
         market_data.append({
@@ -132,7 +131,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
     st.stop()
 
-# Sortering: Bull vs Bear (Topp 3 vardera)
+# Sortering: Bull vs Bear
 bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
 bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
 
@@ -143,14 +142,13 @@ if not bear_candidates:
 
 top_tickers = set([item['ticker'] for item in bull_candidates[:3]] + [item['ticker'] for item in bear_candidates[:3]])
 
-# OUTSIDER / VECKANS GASELL: Väljer den aktie med HÖGST volatilitet som INTE är bland topp 3
 remaining_candidates = [d for d in market_data if d['ticker'] not in top_tickers]
 if not remaining_candidates:
-    remaining_candidates = market_data # Fallback om alla är upplockade
+    remaining_candidates = market_data
 
 gazelle = max(remaining_candidates, key=lambda x: x['volatility'])
 
-# Delad skärm för Bull och Bear
+# Delad skärm
 col_buy, col_sell = st.columns(2, gap="large")
 
 # ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
@@ -162,16 +160,14 @@ with col_buy:
     for item in bull_candidates[:3]:
         st.markdown(f"""
             <div class="stock-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <h3 style="margin: 0; color: #38bdf8;">⚡ {item['ticker']}</h3>
-                        <p style="margin: 2px 0; font-size: 1rem;">
-                            <b>{item['close']:.2f} {item['valuta']}</b> 
-                            <span style="color: #22c55e; font-weight: bold;">({item['pct']:+.2f}%)</span> 
-                            | RSI: <b>{item['rsi']:.1f}</b>
-                        </p>
-                        <small style="color: #94a3b8;">20d Högsta: {item['high_20']:.2f} {item['valuta']}</small>
-                    </div>
+                <div>
+                    <h3 style="margin: 0; color: #38bdf8;">⚡ {item['ticker']}</h3>
+                    <p style="margin: 2px 0; font-size: 1rem;">
+                        <b>{item['close']:.2f} {item['valuta']}</b> 
+                        <span style="color: #22c55e; font-weight: bold;">({item['pct']:+.2f}%)</span> 
+                        | RSI: <b>{item['rsi']:.1f}</b>
+                    </p>
+                    <small style="color: #94a3b8;">20d Högsta: {item['high_20']:.2f} {item['valuta']}</small>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -184,13 +180,13 @@ with col_buy:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI vaskar fram dagens bästa köpcasen..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bull_candidates[:3]])
+                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bull_candidates[:3]])
                 client = OpenAI(api_key=openai_key)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
-                        {"role": "user", "content": f"Vaska fram de starkaste köpcasen bland dessa för dagen:\n{market_text}"}
+                        {"role": "system", "content": "Du är elit-trader. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
+                        {"role": "user", "content": f"Analysera köpcasen:\n{market_text}"}
                     ]
                 )
                 st.success("AI-RAPPORT KLAR")
@@ -206,16 +202,14 @@ with col_sell:
     for item in bear_candidates[:3]:
         st.markdown(f"""
             <div class="stock-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <h3 style="margin: 0; color: #f87171;">💀 {item['ticker']}</h3>
-                        <p style="margin: 2px 0; font-size: 1rem;">
-                            <b>{item['close']:.2f} {item['valuta']}</b> 
-                            <span style="color: #ef4444; font-weight: bold;">({item['pct']:+.2f}%)</span> 
-                            | RSI: <b>{item['rsi']:.1f}</b>
-                        </p>
-                        <small style="color: #94a3b8;">20d Lägsta: {item['low_20']:.2f} {item['valuta']}</small>
-                    </div>
+                <div>
+                    <h3 style="margin: 0; color: #f87171;">💀 {item['ticker']}</h3>
+                    <p style="margin: 2px 0; font-size: 1rem;">
+                        <b>{item['close']:.2f} {item['valuta']}</b> 
+                        <span style="color: #ef4444; font-weight: bold;">({item['pct']:+.2f}%)</span> 
+                        | RSI: <b>{item['rsi']:.1f}</b>
+                    </p>
+                    <small style="color: #94a3b8;">20d Lägsta: {item['low_20']:.2f} {item['valuta']}</small>
                 </div>
             </div>
         """, unsafe_allow_html=True)
@@ -228,4 +222,32 @@ with col_sell:
             st.error("Ange din OpenAI API-nyckel i sidopanelen.")
         else:
             with st.spinner("AI analyserar dagens säljsignaler..."):
-                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close
+                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
+                client = OpenAI(api_key=openai_key)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
+                        {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
+                    ]
+                )
+                st.success("AI-RAPPORT KLAR")
+                st.markdown(response.choices[0].message.content)
+
+# ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
+st.markdown("---")
+st.markdown(f"""
+    <div class="gazelle-box">
+        <h2 style='color: #eab308; margin: 0;'>🔥 VECKANS GASELL (HÖGVOLATIL OUTSIDER)</h2>
+        <h4 style='color: #38bdf8; margin-top: 5px;'>VALD OUTSIDER: {gazelle['ticker']} (Volatilitet: {gazelle['volatility']:.1f}%)</h4>
+        <p style='font-size: 1.1rem; margin-bottom: 5px;'>
+            <b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} 
+            <span style='color: {'#22c55e' if gazelle['pct'] >= 0 else '#ef4444'}; font-weight: bold;'>({gazelle['pct']:+.2f}%)</span> | 
+            <b>RSI:</b> {gazelle['rsi']:.1f} | 
+            <b>20d Högsta:</b> {gazelle['high_20']:.2f} {gazelle['valuta']} | 
+            <b>20d Lägsta:</b> {gazelle['low_20']:.2f} {gazelle['valuta']}
+        </p>
+    </div>
+""", unsafe_allow_html=True)
+
+st.line_chart(gazelle['history'], height=160)
