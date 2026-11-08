@@ -186,21 +186,24 @@ with col_buy:
     run_buy = st.button("🚀 KÖP-ANALYS (AI)", use_container_width=True, key="btn_buy")
     
     if run_buy:
-        if not openai_key:
-            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
+        if not openai_key or not openai_key.startswith("sk-"):
+            st.warning("⚠️ Vänligen ange en giltig OpenAI API-nyckel i sidopanelen för att köra AI-analysen.")
         else:
-            with st.spinner("AI vaskar fram dagens bästa köpcasen..."):
-                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bull_candidates[:3]])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är elit-trader. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
-                        {"role": "user", "content": f"Analysera köpcasen:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
+            try:
+                with st.spinner("AI vaskar fram dagens bästa köpcasen..."):
+                    market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bull_candidates[:3]])
+                    client = OpenAI(api_key=openai_key)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "Du är elit-trader. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
+                            {"role": "user", "content": f"Analysera köpcasen:\n{market_text}"}
+                        ]
+                    )
+                    st.success("AI-RAPPORT KLAR")
+                    st.markdown(response.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Kunde inte nå OpenAI: {e}")
 
 
 # ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
@@ -227,21 +230,24 @@ with col_sell:
     run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
     
     if run_sell:
-        if not openai_key:
-            st.error("Ange din OpenAI API-nyckel i sidopanelen.")
+        if not openai_key or not openai_key.startswith("sk-"):
+            st.warning("⚠️ Vänligen ange en giltig OpenAI API-nyckel i sidopanelen för att köra AI-analysen.")
         else:
-            with st.spinner("AI analyserar dagens säljsignaler..."):
-                market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
-                client = OpenAI(api_key=openai_key)
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
-                        {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
-                    ]
-                )
-                st.success("AI-RAPPORT KLAR")
-                st.markdown(response.choices[0].message.content)
+            try:
+                with st.spinner("AI analyserar dagens säljsignaler..."):
+                    market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
+                    client = OpenAI(api_key=openai_key)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
+                            {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
+                        ]
+                    )
+                    st.success("AI-RAPPORT KLAR")
+                    st.markdown(response.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Kunde inte nå OpenAI: {e}")
 
 # ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
 gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
@@ -262,26 +268,29 @@ st.markdown(
 
 st.line_chart(gazelle['history'], height=160)
 
-# ==================== DAGENS EKONOMIRUBRIKER (AI-GENERERAD / MARKNADSLÄGE) ====================
+# ==================== DAGENS EKONOMIRUBRIKER (AI-GENERERAD / MAKRO) ====================
 st.markdown(
     '<div class="news-box">'
     '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
-    '<p style="color: #94a3b8; font-size: 0.9rem;">Klicka på knappen nedan för att låta AI generera dagens färska ekonomirubriker och marknadskommentarer direkt.</p>'
+    '<p style="color: #94a3b8; font-size: 0.9rem;">Klicka på knappen nedan för att generera dagens färska ekonomirubriker och marknadskommentarer via AI.</p>'
     '</div>',
     unsafe_allow_html=True
 )
 
 if st.button("📡 HÄMTA DAGENS MAKRO- & NYHETSANALYS", use_container_width=True):
-    if not openai_key:
-        st.error("Ange din OpenAI API-nyckel i sidopanelen för att hämta nyhetsanalysen.")
+    if not openai_key or not openai_key.startswith("sk-"):
+        st.warning("⚠️ Vänligen ange din OpenAI API-nyckel i sidopanelen först.")
     else:
-        with st.spinner("Analyserar dagens globala finansflöden och börsrubriker..."):
-            client = OpenAI(api_key=openai_key)
-            news_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 fiktiva eller dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
-                    {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
-                ]
-            )
-            st.markdown(news_resp.choices[0].message.content)
+        try:
+            with st.spinner("Analyserar dagens globala finansflöden och börsrubriker..."):
+                client = OpenAI(api_key=openai_key)
+                news_resp = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
+                        {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
+                    ]
+                )
+                st.markdown(news_resp.choices[0].message.content)
+        except Exception as e:
+            st.error(f"Kunde inte nå OpenAI: {e}")
