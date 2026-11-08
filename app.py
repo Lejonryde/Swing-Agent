@@ -27,11 +27,40 @@ st.markdown(
     "    font-weight: 800;"
     "    color: #38bdf8;"
     "}"
+    ".stock-card {"
+    "    background: #161b22;"
+    "    border-radius: 8px;"
+    "    padding: 12px;"
+    "    margin-bottom: 10px;"
+    "    border: 1px solid #30363d;"
+    "}"
     "</style>",
     unsafe_allow_html=True
 )
 
-# Huvudrubrik (utan gamla namnet)
+# Domän-mapping för 100% garanterade logotyper via Clearbit
+DOMAIN_MAP = {
+    "VOLV-B.ST": "volvogroup.com",
+    "ERIC-B.ST": "ericsson.com",
+    "SSAB-B.ST": "ssab.com",
+    "SBB-B.ST": "sbbnorden.se",
+    "TELIA.ST": "teliacompany.com",
+    "SINCH.ST": "sinch.com",
+    "NVDA": "nvidia.com",
+    "TSLA": "tesla.com",
+    "AMD": "amd.com",
+    "PLTR": "palantir.com"
+}
+
+def get_logo_url(ticker):
+    domain = DOMAIN_MAP.get(ticker.upper())
+    if domain:
+        return f"https://logo.clearbit.com/{domain}"
+    # Fallback om domän saknas
+    clean_ticker = ticker.split('.')[0].lower()
+    return f"https://logo.clearbit.com/{clean_ticker}.com"
+
+# Huvudrubrik
 st.markdown('<div class="brand-title">👑 SWING KING TERMINAL</div>', unsafe_allow_html=True)
 st.caption("QUANT ENGINE // BREAKOUT & EXIT PROTOCOL")
 st.markdown("---")
@@ -64,7 +93,7 @@ with col_buy:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar grafer och marknadsdata..."):
+            with st.spinner("Hämtar grafer, logotyper och marknadsdata..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -81,22 +110,18 @@ with col_buy:
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        # Hämta logotyp om den finns
-                        info = stock.info
-                        logo_url = info.get('logo_url', '')
+                        logo_url = get_logo_url(ticker)
                         
-                        # Visa logotyp, ticker och veckograf direkt i gränssnittet
+                        # Visa logo, ticker-data och graf
                         col_img, col_txt = st.columns([1, 4])
                         with col_img:
-                            if logo_url:
-                                st.image(logo_url, width=45)
-                            else:
-                                st.write("📈")
+                            st.image(logo_url, width=45)
                         with col_txt:
-                            st.markdown(f"**{ticker}** | {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}")
+                            st.markdown(f"### {ticker}")
+                            st.write(f"**Slutkurs:** {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | **RSI:** {rsi_val:.1f}")
                         
-                        # Veckograf (senaste 7 dagarna)
-                        st.line_chart(close_ser.tail(7), height=120)
+                        st.line_chart(close_ser.tail(7), height=100)
+                        st.markdown("---")
                         
                         info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
@@ -132,7 +157,7 @@ with col_sell:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar grafer och exit-data..."):
+            with st.spinner("Hämtar grafer, logotyper och exit-data..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -149,20 +174,17 @@ with col_sell:
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        info = stock.info
-                        logo_url = info.get('logo_url', '')
+                        logo_url = get_logo_url(ticker)
                         
                         col_img, col_txt = st.columns([1, 4])
                         with col_img:
-                            if logo_url:
-                                st.image(logo_url, width=45)
-                            else:
-                                st.write("📉")
+                            st.image(logo_url, width=45)
                         with col_txt:
-                            st.markdown(f"**{ticker}** | {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}")
+                            st.markdown(f"### {ticker}")
+                            st.write(f"**Slutkurs:** {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | **RSI:** {rsi_val:.1f}")
                         
-                        # Veckograf (senaste 7 dagarna)
-                        st.line_chart(close_ser.tail(7), height=120)
+                        st.line_chart(close_ser.tail(7), height=100)
+                        st.markdown("---")
                         
                         info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
