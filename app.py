@@ -100,4 +100,31 @@ def run_low_risk_agent(api_key):
                 low_10 = df['Low'].iloc[-10:].min()
                 valuta = "SEK" if ticker.endswith(".ST") else "USD"
                 
-                sma_50 = ta.trend.sma_indicator(df['Close
+                sma_50 = ta.trend.sma_indicator(df['Close'], window=50).iloc[-1]
+                rsi = ta.momentum.rsi(df['Close'], window=14).iloc[-1]
+                
+                data_summary = f"Ticker: {ticker} | Kurs: {close_price:.2f} {valuta} | SMA 50: {sma_50:.2f} | Support: {low_10:.2f} | RSI: {rsi:.1f}"
+                stock_data_list.append(data_summary)
+            except:
+                continue
+                
+        market_text = "\n".join(stock_data_list)
+        
+        client = OpenAI(api_key=api_key)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Du är en konservativ portföljförvaltare fokuserad på rekylköp."},
+                {"role": "user", "content": f"Analysera följande Large Cap-data och ge en Top 5-rapport med exakta rekylnivåer, stop-loss och målkurs:\n{market_text}"}
+            ]
+        )
+        st.success("Analys klar!")
+        st.markdown(response.choices[0].message.content)
+
+
+# Kör agenterna baserat på klick
+if run_high:
+    run_high_risk_agent(openai_key)
+
+if run_low:
+    run_low_risk_agent(openai_key)
