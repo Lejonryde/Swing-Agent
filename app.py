@@ -7,15 +7,14 @@ from openai import OpenAI
 
 # Sidkonfiguration
 st.set_page_config(
-    page_title="Swing Terminal",
-    page_icon="⚡",
+    page_title="Swing King",
+    page_icon="👑",
     layout="wide"
 )
 
-# Anpassad CSS som fyller hela halvorna med blått respektive rött
+# Anpassad CSS som fyller halvorna i blått respektive rött
 st.markdown("""
 <style>
-    /* Gör hela kolumn-boxarna helt färgfyllda */
     .buy-zone {
         background-color: rgba(0, 123, 255, 0.15);
         border: 3px solid #007bff;
@@ -30,11 +29,19 @@ st.markdown("""
         border-radius: 15px;
         min-height: 500px;
     }
+    .box-header {
+        font-size: 1.2rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Enkel rubrik
-st.title("⚡ AI Swing Trading Terminal")
+# Huvudrubrik
+st.title("👑 Swing King // AI Trading Terminal")
+st.caption("Ditt intelligenta beslutsstöd för kortsiktiga marknadsrörelser.")
 
 # Sidebar
 st.sidebar.header("⚙️ Inställningar")
@@ -54,8 +61,8 @@ col_buy, col_sell = st.columns(2, gap="large")
 # ==================== VÄNSTER HALVA: BLÅ (KÖP) ====================
 with col_buy:
     st.markdown('<div class="buy-zone">', unsafe_allow_html=True)
-    st.markdown("## 🔵 KÖPLÄGEN & BREAKOUTS")
-    st.write("Fokuserar på starka uppåtgående trender och köpsignaler.")
+    st.markdown('<div style="color: #0056b3;" class="box-header">🔵 DAGENS FÖRETAG // KÖP & BREAKOUTS</div>', unsafe_allow_html=True)
+    st.write("Skannar marknaden efter de starkaste uppåtgående trenderna.")
     
     run_buy = st.button("🚀 KÖP-ANALYS", use_container_width=True)
     
@@ -64,7 +71,7 @@ with col_buy:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Skannar köpkandidater..."):
+            with st.spinner("Analyserar köpkandidater..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -85,7 +92,7 @@ with col_buy:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en aggressiv swingtrader som letar efter de bästa köplägena med hög potential."},
+                        {"role": "system", "content": "Du är en vass swingtrader som levererar skarpa köprekommendationer."},
                         {"role": "user", "content": f"Analysera datan och ge Top 3 aktier för KÖP med exakt entry, stop-loss och målkurs:\n{market_text}"}
                     ]
                 )
@@ -97,8 +104,8 @@ with col_buy:
 # ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
 with col_sell:
     st.markdown('<div class="sell-zone">', unsafe_allow_html=True)
-    st.markdown("## 🔴 SÄLJ & VINSTHEMTAGNING")
-    st.write("Fokuserar på överköpta lägen, brutna stöd och exits.")
+    st.markdown('<div style="color: #a71d2a;" class="box-header">🔴 DAGENS FÖRETAG // SÄLJ & EXITS</div>', unsafe_allow_html=True)
+    st.write("Identifierar överköpta lägen och vinsthemtagningar.")
     
     run_sell = st.button("🛑 SÄLJ-ANALYS", use_container_width=True)
     
@@ -107,7 +114,7 @@ with col_sell:
             st.error("Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Skannar säljsignaler..."):
+            with st.spinner("Analyserar säljsignaler..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -128,7 +135,7 @@ with col_sell:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en försiktig riskhanterare som varnar för överköpta aktier och rekommenderar försäljning."},
+                        {"role": "system", "content": "Du är en riskmedveten förvaltare som varnar för risker och rekommenderar vinsthemtagning."},
                         {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som bör SÄLJAS eller där vinst bör säkras:\n{market_text}"}
                     ]
                 )
