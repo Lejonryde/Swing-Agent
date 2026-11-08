@@ -196,8 +196,8 @@ with col_buy:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "Du är elit-trader. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
-                            {"role": "user", "content": f"Analysera köpcasen:\n{market_text}"}
+                            {"role": "system", "content": f"Du är elit-trader. Dagens datum är {today_str}. Analysera stenhårt på svenska med emojis, entries och stop-loss."},
+                            {"role": "user", "content": f"Analysera köpcasen för idag ({today_str}):\n{market_text}"}
                         ]
                     )
                     st.success("AI-RAPPORT KLAR")
@@ -240,8 +240,8 @@ with col_sell:
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
                         messages=[
-                            {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
-                            {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
+                            {"role": "system", "content": f"Du är skoningslös riskmanager. Dagens datum är {today_str}. Peka ut rasrisker på svenska med emojis."},
+                            {"role": "user", "content": f"Analysera säljsignaler för idag ({today_str}):\n{market_text}"}
                         ]
                     )
                     st.success("AI-RAPPORT KLAR")
@@ -284,8 +284,8 @@ else:
             news_resp = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
-                    {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {today_str}."}
+                    {"role": "system", "content": f"Du är en finansiell nyhetsanalytiker. Dagens datum är idag ({today_str}). Skriv dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen och makroläget just nu på svenska med emojis."},
+                    {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna och marknadsläget för idag {today_str}."}
                 ]
             )
             st.markdown(news_resp.choices[0].message.content)
