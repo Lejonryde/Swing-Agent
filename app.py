@@ -208,3 +208,56 @@ with col_buy:
 
 # ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
 with col_sell:
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS (TOPP 3)</h4>", unsafe_allow_html=True)
+    st.write("Dagens säljkandidater och rasrisker:")
+    
+    for item in bear_candidates[:3]:
+        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
+        st.markdown(
+            f'<div class="stock-card">'
+            f'<div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3>'
+            f'<p style="margin: 2px 0; font-size: 1rem;">'
+            f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
+            f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
+            f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
+            f'<small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
+        st.line_chart(item['history'], height=120)
+
+    run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
+    
+    if run_sell:
+        if not openai_key or not openai_key.startswith("sk-"):
+            st.warning("⚠️ Vänligen ange en giltig OpenAI API-nyckel i sidopanelen för att köra AI-analysen.")
+        else:
+            try:
+                with st.spinner("AI analyserar dagens säljsignaler..."):
+                    market_text = ",\n".join([f"{i['ticker']}: {i['close']} {i['valuta']} ({i['pct']}%)" for i in bear_candidates[:3]])
+                    client = OpenAI(api_key=openai_key)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "Du är skoningslös riskmanager. Peka ut rasrisker på svenska med emojis."},
+                            {"role": "user", "content": f"Analysera säljsignaler:\n{market_text}"}
+                        ]
+                    )
+                    st.success("AI-RAPPORT KLAR")
+                    st.markdown(response.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Kunde inte nå OpenAI: {e}")
+
+# ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
+gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
+st.markdown("---")
+st.markdown(
+    f'<div class="gazelle-box">'
+    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL OUTSIDER)</h2>'
+    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
+    f'<p style="font-size: 1.1rem; margin-bottom: 5px;">'
+    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
+    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
+    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
+    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
