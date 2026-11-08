@@ -7,12 +7,12 @@ from openai import OpenAI
 
 # Sidkonfiguration
 st.set_page_config(
-    page_title="AI Swing Trading Terminal",
+    page_title="Lejonryde Capital // Swing Terminal",
     page_icon="⚡",
     layout="wide"
 )
 
-# Anpassad CSS för drama, färgboxar och stil
+# Anpassad CSS för färgboxar och logotyper
 st.markdown("""
 <style>
     .buy-box {
@@ -29,20 +29,18 @@ st.markdown("""
         border-radius: 15px;
         box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
     }
-    .main-header {
-        display: flex;
-        align-items: center;
-        gap: 15px;
+    .box-logo {
+        font-size: 1.1rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Topp-banner med logotype-känsla och drama
-st.markdown("""
-    <div class="main-header">
-        <h1>⚡ LEJONRYDE CAPITAL // SWING TERMINAL</h1>
-    </div>
-""", unsafe_allow_html=True)
+# Huvudrubrik
+st.title("⚡ LEJONRYDE CAPITAL // SWING TERMINAL")
 st.caption("🚨 AI-driven krigszon för kortsiktig momentum-trading, utbrott och skoningslösa exits.")
 
 # Sidebar
@@ -60,10 +58,11 @@ tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 # Huvudlayout: Delad skärm (Köp vs Sälj)
 col_buy, col_sell = st.columns(2, gap="large")
 
-# ==================== KÖP-SIDAN (BLÅ - BULLISH DRAMA) ====================
+# ==================== KÖP-SIDAN (BLÅ MED LOGO) ====================
 with col_buy:
     st.markdown('<div class="buy-box">', unsafe_allow_html=True)
-    st.subheader("🚀 BULL-PENNA // KÖPLÄGEN & BREAKOUTS")
+    st.markdown('<div style="color: #007bff;" class="box-logo">🛡️ LEJONRYDE CAPITAL // BULL DIVISION</div>', unsafe_allow_html=True)
+    st.subheader("🚀 KÖPLÄGEN & BREAKOUTS")
     st.markdown("*Här jagar vi de blodiga rörelserna uppåt. Hög energi, perfekta entrisar.*")
     
     run_buy = st.button("🔥 UTELÖS KÖP-ATTACK (START)", use_container_width=True)
@@ -95,22 +94,23 @@ with col_buy:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en kompromisslös, aggressiv kryptisk swingtrader (Jordan Belfort-vibe) som älskar risk och stora uppgångar. Använd dramatiskt, eldigt språk med emojis."},
+                        {"role": "system", "content": "Du är en kompromisslös, aggressiv swingtrader för Lejonryde Capital som älskar risk och stora uppgångar. Använd dramatiskt, eldigt språk med emojis."},
                         {"role": "user", "content": f"Analysera datan med maximalt driv och ge Top 3 aktier för KÖP. Sätt eld på rapporten med exakta entry-nivåer, tight stop-loss och saftig målkurs:\n{market_text}"}
                     ]
                 )
-                st.success(" attacken är redo!")
+                st.success("Köp-attack redo!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
 
 
-# ==================== SÄLJ-SIDAN (RÖD - BEARISH DRAMA) ====================
+# ==================== SÄLJ-SIDAN (RÖD MED LOGO) ====================
 with col_sell:
     st.markdown('<div class="sell-box">', unsafe_allow_html=True)
-    st.subheader("💀 BEAR-TRAP // EXIT & VINSTHEMTAGNING")
+    st.markdown('<div style="color: #dc3545;" class="box-logo">⚠️ LEJONRYDE CAPITAL // BEAR DIVISION</div>', unsafe_allow_html=True)
+    st.subheader("💀 EXIT & VINSTHEMTAGNING")
     st.markdown("*Här klipper vi förlorarna skoningslöst och säkrar vinsten innan marknaden gör det åt oss.*")
     
-    run_sell = st.button("🛑 UTELÖS SLakt-ATTACK (START)", use_container_width=True)
+    run_sell = st.button("🛑 UTELÖS SLAKT-ATTACK (START)", use_container_width=True)
     
     if run_sell:
         if not openai_key:
@@ -138,10 +138,11 @@ with col_sell:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en benhård riskhanterare som hatar att förlora pengar. Varnar dramatiskt för överköpta aktier, stup och röd panik. Använd stenhårt språk med emojis."},
+                        {"role": "system", "content": "Du är en benhård riskhanterare för Lejonryde Capital som hatar att förlora pengar. Varnar dramatiskt för överköpta aktier, stup och röd panik. Använd stenhårt språk med emojis."},
                         {"role": "user", "content": f"Analysera datan och ge Top 3 aktier som OMEDELBART SKA SÄLJAS eller blankas (högt RSI, rasrisk, brutna stöd). Var skoningslös:\n{market_text}"}
                     ]
                 )
                 st.success("Slakt-rapport klar!")
                 st.markdown(response.choices[0].message.content)
     st.markdown('</div>', unsafe_allow_html=True)
+    
