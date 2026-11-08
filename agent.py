@@ -45,7 +45,6 @@ for ticker in tickers:
         rsi_series = ta.momentum.rsi(df['Close'], window=14)
         rsi = rsi_series.iloc[-1] if not rsi_series.empty and pd.notna(rsi_series.iloc[-1]) else 50.0
         
-        # Sammanställ data för AI-analys
         data_summary = (
             f"Ticker: {ticker} | Kurs: {close_price:.2f} {valuta} | "
             f"20d Högsta: {high_20:.2f} | 5d Lägsta (Stöd): {low_5:.2f} | RSI: {rsi:.1f}"
@@ -90,4 +89,21 @@ response = client.chat.completions.create(
 
 ai_report = response.choices[0].message.content
 
-print("3. Skick
+print("3. Skickar e-postrapport (Högrisk)...")
+
+if EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER:
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL_SENDER
+    msg['To'] = EMAIL_RECEIVER
+    msg['Subject'] = "🤖 Högrisk-Agent: Marknadsanalys & Top 5 Triggers"
+    msg.attach(MIMEText(ai_report, 'plain', 'utf-8'))
+    
+    try:
+        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server.starttls()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
+        server.quit()
+        print("Högrisk-rapport skickad!")
+    except Exception as e:
+        print(f"E-postfel: {e}")
