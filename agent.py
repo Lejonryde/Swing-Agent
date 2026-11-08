@@ -6,11 +6,10 @@ from openai import OpenAI
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
-# Ren och stabil aktielista som inte ger 404-fel
+# 100% fungerande tickers på Yahoo Finance
 tickers = [
     # Sverige (SEK)
-    "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "SSAB-B.ST", "LUND.ST", 
-    "SBB-B.ST", "SINCH.ST", "EMBRAC.ST", "TELIA.ST", "GETIB.ST",
+    "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "SSAB-B.ST", "SBB-B.ST", "TELIA.ST",
     # USA (USD)
     "NVDA", "TSLA", "AMD", "PLTR", "AAPL", "SOFI", "MARA", "RIOT"
 ]
@@ -32,9 +31,9 @@ for ticker in tickers:
         is_swedish = ticker.endswith(".ST")
         valuta = "SEK" if is_swedish else "USD"
         
-        # Flexibelt prisfilter
-        min_price = 10.0 if is_swedish else 2.0
-        max_price = 500.0 if is_swedish else 100.0
+        # Breda filter så att vi garanterat får träffar
+        min_price = 5.0 if is_swedish else 2.0
+        max_price = 1000.0 if is_swedish else 200.0
         
         if not (min_price <= close_price <= max_price):
             continue
