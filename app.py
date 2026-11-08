@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# ULTRA-MODERN DARK BLOOMBERG/TRADING TERMINAL CSS
+# ULTRA-MODERN DARK TERMINAL CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&display=swap');
@@ -39,18 +39,18 @@ st.markdown("""
     }
 
     .bull-box {
-        background: linear-gradient(180deg, rgba(0, 123, 255, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+        background: linear-gradient(180deg, rgba(0, 123, 255, 0.18) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #0284c7;
-        box-shadow: 0 0 15px rgba(2, 132, 199, 0.2);
+        box-shadow: 0 0 15px rgba(2, 132, 199, 0.25);
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 15px;
     }
 
     .bear-box {
-        background: linear-gradient(180deg, rgba(220, 53, 69, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%);
+        background: linear-gradient(180deg, rgba(220, 53, 69, 0.18) 0%, rgba(15, 23, 42, 0.9) 100%);
         border: 2px solid #dc2626;
-        box-shadow: 0 0 15px rgba(220, 38, 38, 0.2);
+        box-shadow: 0 0 15px rgba(220, 38, 38, 0.25);
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 15px;
@@ -84,7 +84,7 @@ with col_buy:
         <div class="bull-box">
             <h2 style='color: #38bdf8; margin: 0; font-weight: 800;'>🔵 DAGENS FÖRETAG</h2>
             <h4 style='color: #94a3b8; margin-top: 5px; text-transform: uppercase;'>KÖP & BREAKOUTS (FREDAGSSLUT)</h4>
-            <p style='color: #cbd5e1; font-size: 0.9rem;'>Analyserar fredagens stängningskurser och volymutbrott.</p>
+            <p style='color: #cbd5e1; font-size: 0.9rem;'>Analyserar fredagens stängningskurser och volymutbrott för din bevakningslista.</p>
         </div>
     """, unsafe_allow_html=True)
     
@@ -95,8 +95,7 @@ with col_buy:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            logo_urls = []
-            with st.spinner("Hämtar fredagsdata och logotyper..."):
+            with st.spinner("Hämtar fredagsdata för dina aktier..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -112,13 +111,53 @@ with col_buy:
                         rsi = ta.momentum.rsi(df['Close'], window=14).iloc[-1]
                         
                         stock_data_list.append(f"Ticker: {ticker} | Fredag Slutkurs: {friday_close:.2f} {valuta} ({pct_change:+.2f}%) | 20d Högsta: {high_20:.2f} | RSI: {rsi:.1f}")
-                        
-                        info = stock.info
-                        logo_url = info.get('logo_url', '')
-                        if logo_url:
-                            logo_urls.append((ticker, logo_url))
                     except:
                         continue
-                
-                if logo_urls:
-                    cols_logo = st.columns(len(logo_urls) if len(logo_urls) <= 5
+
+                if not stock_data_list:
+                    st.warning("Ingen data hittades för angivna tickers.")
+                else:
+                    market_text = "\n".join(stock_data_list)
+                    client = OpenAI(api_key=openai_key)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "Du är en elit-trader på Lejonryde Capital. Utgå stenhårt från fredagens slutkurser och indata. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
+                            {"role": "user", "content": f"Baserat på fredagsdata, vaska fram de 3 starkaste köpcasen:\n{market_text}"}
+                        ]
+                    )
+                    st.success("ANALYS KLAR")
+                    st.markdown(response.choices[0].message.content)
+
+
+# ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
+with col_sell:
+    st.markdown("""
+        <div class="bear-box">
+            <h2 style='color: #f87171; margin: 0; font-weight: 800;'>🔴 DAGENS FÖRETAG</h2>
+            <h4 style='color: #94a3b8; margin-top: 5px; text-transform: uppercase;'>SÄLJ & EXITS (FREDAGSSLUT)</h4>
+            <p style='color: #cbd5e1; font-size: 0.9rem;'>Identifierar överköpta lägen och rasrisker baserat på fredagsstängningen.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    run_sell = st.button("🛑 SÄLJ-ANALYS", use_container_width=True, key="btn_sell")
+    
+    if run_sell:
+        if not openai_key:
+            st.error("❌ Fyll i OpenAI API-nyckel!")
+        else:
+            stock_data_list = []
+            with st.spinner("Analyserar fredagsslut för exits..."):
+                for ticker in tickers_list:
+                    try:
+                        stock = yf.Ticker(ticker)
+                        df = stock.history(period="1mo")
+                        if df.empty or len(df) < 5:
+                            continue
+                        
+                        friday_close = df.iloc[-1]['Close']
+                        prev_close = df.iloc[-2]['Close']
+                        pct_change = ((friday_close - prev_close) / prev_close) * 100
+                        low_20 = df['Low'].min()
+                        valuta = "SEK" if ticker.endswith(".ST") else "USD"
+                        rsi = ta.momentum.rsi(df['Close'], window=14).iloc[-1]
