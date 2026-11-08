@@ -73,7 +73,6 @@ for ticker in tickers_list:
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
-        # Logotyp-fallback
         clean_name = ticker.split('.')[0].lower()
         logo_url = f"https://logo.clearbit.com/{clean_name}.com"
         
@@ -95,8 +94,10 @@ for ticker in tickers_list:
 bull_candidates = sorted([d for d in market_data if d['pct'] >= 0 or d['rsi'] > 50], key=lambda x: x['pct'], reverse=True)
 bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
 
-if not bull_candidates: bull_candidates = market_data[:3]
-if not bear_candidates: bear_candidates = market_data[-3:]
+if not bull_candidates: 
+    bull_candidates = market_data[:3]
+if not bear_candidates: 
+    bear_candidates = market_data[-3:]
 
 # Delad skärm
 col_buy, col_sell = st.columns(2, gap="large")
@@ -124,7 +125,6 @@ with col_buy:
             </div>
         """, unsafe_allow_html=True)
         
-        # Zoammad Plotly-graf för tydlig trend
         fig = px.line(item['history'], x='Date', y='Close', height=140)
         fig.update_traces(line_color='#38bdf8', line_width=2.5)
         fig.update_layout(
@@ -148,4 +148,63 @@ with col_buy:
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan
+                        {"role": "system", "content": "Du är en elit-trader. Utgå stenhårt från indatan. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
+                        {"role": "user", "content": f"Vaska fram de 3 starkaste köpcasen bland dessa:\n{market_text}"}
+                    ]
+                )
+                st.success("AI-RAPPORT KLAR")
+                st.markdown(response.choices[0].message.content)
+
+
+# ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
+with col_sell:
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS</h4>", unsafe_allow_html=True)
+    st.write("Säljkandidater och rasrisker med zoomed sparkline-graf:")
+    
+    for item in bear_candidates[:4]:
+        st.markdown(f"""
+            <div class="stock-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h3 style="margin: 0; color: #f87171;">💀 {item['ticker']}</h3>
+                        <p style="margin: 2px 0; font-size: 1rem;">
+                            <b>{item['close']:.2f} {item['valuta']}</b> 
+                            <span style="color: #ef4444; font-weight: bold;">({item['pct']:+.2f}%)</span> 
+                            | RSI: <b>{item['rsi']:.1f}</b>
+                        </p>
+                        <small style="color: #94a3b8;">20d Lägsta: {item['low_20']:.2f} {item['valuta']}</small>
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        fig = px.line(item['history'], x='Date', y='Close', height=140)
+        fig.update_traces(line_color='#f43f5e', line_width=2.5)
+        fig.update_layout(
+            margin=dict(l=0, r=0, t=5, b=5),
+            xaxis=dict(showgrid=False, title=None),
+            yaxis=dict(showgrid=True, gridcolor='#1e293b', title=None),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+    run_sell = st.button("🛑 SÄLJ-ANALYS (AI)", use_container_width=True, key="btn_sell")
+    
+    if run_sell:
+        if not openai_key:
+            st.error("❌ Fyll i OpenAI API-nyckel!")
+        else:
+            with st.spinner("AI analyserar säljsignaler..."):
+                market_text = "\n".join([f"Ticker: {i['ticker']} | Kurs: {i['close']:.2f} {i['valuta']} ({i['pct']:+.2f}%) | RSI: {i['rsi']:.1f}" for i in bear_candidates])
+                client = OpenAI(api_key=openai_key)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "Du är en skoningslös riskmanager. Peka ut överköpta aktier och rasrisker på svenska med emojis."},
+                        {"role": "user", "content": f"Peka ut de 3 aktier som OMEDELBART SKA SÄLJAS bland dessa:\n{market_text}"}
+                    ]
+                )
+                st.success("AI-RAPPORT KLAR")
+                st.markdown(response.choices[0].message.content)
