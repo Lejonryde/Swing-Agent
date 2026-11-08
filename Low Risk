@@ -12,7 +12,6 @@ EMAIL_SENDER = os.environ.get("EMAIL_SENDER")
 EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD")
 EMAIL_RECEIVER = os.environ.get("EMAIL_RECEIVER")
 
-# Stabila Large Cap-bolag (Sverige & USA)
 tickers = [
     "VOLV-B.ST", "ERIC-B.ST", "AZN.ST", "TELIA.ST", "INVE-B.ST",
     "SHB-A.ST", "SEB-A.ST", "ABB.ST", "ASSA-B.ST",
@@ -73,7 +72,7 @@ Formatera rapporten professionellt på svenska med:
    - **Bolag & Ticker**
    - **Exakt Köpläge (Rekylnivå / Supportzon)**
    - **Entry-nivå**
-   - **Stop-Loss & Risk (%) (Snäv riskkontroll)**
+   - **Stop-Loss & Risk (%)**
    - **Target / Målkurs**
    - **Motivering baserad på trend och fundamental stabilitet**
 """
@@ -90,8 +89,12 @@ response = client.chat.completions.create(
 
 ai_report = response.choices[0].message.content
 
-print("3. Skickar e-postrapport (Lågrisk)...")
+# Skriv ut rapporten direkt i GitHub-loggen
+print("\n" + "="*50 + "\nLÅGRISK-RAPPORT:\n" + "="*50 + "\n")
+print(ai_report)
+print("\n" + "="*50 + "\n")
 
+print("3. Skickar e-postrapport (Lågrisk)...")
 if EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER:
     msg = MIMEMultipart()
     msg['From'] = EMAIL_SENDER
@@ -105,6 +108,6 @@ if EMAIL_SENDER and EMAIL_PASSWORD and EMAIL_RECEIVER:
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
         server.sendmail(EMAIL_SENDER, EMAIL_RECEIVER, msg.as_string())
         server.quit()
-        print("Lågrisk-rapport skickad!")
+        print("Lågrisk-rapport skickad via e-post!")
     except Exception as e:
         print(f"E-postfel: {e}")
