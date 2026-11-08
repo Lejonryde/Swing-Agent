@@ -175,34 +175,33 @@ with col_buy:
     
     for item in bull_candidates[:3]:
         pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        entry_price = item['close'] * 0.99  # Lätt pullback som entry
-        target_price = item['close'] * 1.05 # +5% mål
-        stop_loss = item['close'] * 0.96   # -4% stop loss
+        entry_price = item['close'] * 0.99
+        target_price = item['close'] * 1.05
+        stop_loss = item['close'] * 0.96
         
-        st.markdown(
+        card_html = (
             f'<div class="stock-card">'
             f'<div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3>'
             f'<p style="margin: 4px 0; font-size: 1rem;">'
             f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
             f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
             f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
-            f'<small style="color: #94a3b8;">20d Högsta: {item["high_20']:.2f} {item["valuta"]}</small>'
-            f'</div>',
-            unsafe_allow_html=True
+            f'<small style="color: #94a3b8;">20d Högsta: {item["high_20"]:.2f} {item["valuta"]}</small>'
+            f'</div></div>'
         )
+        st.markdown(card_html, unsafe_allow_html=True)
         st.line_chart(item['history'], height=120)
         
-        # Särskild kvantitativ rapport för denna aktie
-        st.markdown(
+        report_html = (
             f'<div class="report-box">'
             f'<b>📊 Kvantrapport & Nivåer ({item["ticker"]}):</b><br>'
             f'• <b>Entry:</b> {entry_price:.2f} {item["valuta"]}<br>'
             f'• <b>Target:</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]} (+5%)</span><br>'
             f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]} (-4%)</span><br>'
             f'• <i>Status: Bullish momentum med starkt stöd vid 20-dagarslinjen.</i>'
-            f'</div>',
-            unsafe_allow_html=True
+            f'</div>'
         )
+        st.markdown(report_html, unsafe_allow_html=True)
 
 
 # ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
@@ -216,7 +215,7 @@ with col_sell:
         short_target = item['close'] * 0.95
         short_stop = item['close'] * 1.03
         
-        st.markdown(
+        card_html = (
             f'<div class="stock-card">'
             f'<div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3>'
             f'<p style="margin: 4px 0; font-size: 1rem;">'
@@ -224,22 +223,21 @@ with col_sell:
             f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
             f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
             f'<small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small>'
-            f'</div>',
-            unsafe_allow_html=True
+            f'</div></div>'
         )
+        st.markdown(card_html, unsafe_allow_html=True)
         st.line_chart(item['history'], height=120)
         
-        # Särskild kvantitativ säljrapport för denna aktie
-        st.markdown(
+        bear_report_html = (
             f'<div class="bear-report-box">'
             f'<b>📊 Riskrapport & Exitnivåer ({item["ticker"]}):</b><br>'
             f'• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>'
             f'• <b>Target:</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]} (-5%)</span><br>'
             f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]} (+3%)</span><br>'
             f'• <i>Status: Nedåtgående press med ökad rasrisk under nyckelnivåer.</i>'
-            f'</div>',
-            unsafe_allow_html=True
+            f'</div>'
         )
+        st.markdown(bear_report_html, unsafe_allow_html=True)
 
 # ==================== VECKANS GASELL (HÖGVOLATIL OUTSIDER) ====================
 gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
@@ -248,7 +246,7 @@ g_target = gazelle['close'] * 1.10
 g_stop = gazelle['close'] * 0.93
 
 st.markdown("---")
-st.markdown(
+gazelle_html = (
     f'<div class="gazelle-box">'
     f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL OUTSIDER)</h2>'
     f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
@@ -259,14 +257,4 @@ st.markdown(
     f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
     f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
     f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Gasell-Rapport & Nivåer:</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]}<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Status: Hög volatilitet och brett prisintervall ger stor potential för snabba rörelser.</i>'
-    f'</div>',
-    unsafe_allow_html=True
-)
-
-st.line_chart(gazelle['history'], height=160)
+    f'<hr style="border-color: #e
