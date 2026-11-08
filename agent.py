@@ -104,3 +104,6 @@ try:
     print("[✓] E-postrapporten har skickats framgångsrikt!")
 except Exception as e:
     print(f"[X] Kunde inte skicka e-post: {e}")
+    tickers = [
+    "VOLV-B.ST", "HM-B.ST", "ERIC-B.ST", "SAND.ST", "AZN.ST"
+
