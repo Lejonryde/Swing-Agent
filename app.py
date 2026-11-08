@@ -261,3 +261,45 @@ st.markdown(
     f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
     f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
     f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
+    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
+    f'</p></div>',
+    unsafe_allow_html=True
+)
+
+st.line_chart(gazelle['history'], height=160)
+
+# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK) ====================
+st.markdown(
+    '<div class="news-box">'
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO</h3>'
+    '<p style="color: #94a3b8; font-size: 0.9rem;">Hämtas och uppdateras automatiskt vid sidladdning:</p>'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+@st.cache_data(ttl=3600)
+def fetch_daily_news(api_key, date_str):
+    if not api_key or not api_key.startswith("sk-"):
+        return None
+    try:
+        client = OpenAI(api_key=api_key)
+        news_resp = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Du är en finansiell nyhetsanalytiker. Skriv 4-5 dagsaktuella tunga ekonomirubriker och korta sammanfattningar för börsen idag på svenska med emojis."},
+                {"role": "user", "content": f"Ge mig de viktigaste ekonomirubrikerna för datum {date_str}."}
+            ]
+        )
+        return news_resp.choices[0].message.content
+    except Exception:
+        return None
+
+if not openai_key or not openai_key.startswith("sk-"):
+    st.warning("⚠️ Ange din OpenAI API-nyckel i sidopanelen för att läsa in automatiska makro- och nyhetsrubriker.")
+else:
+    with st.spinner("Laddar dagens färska ekonomirubriker..."):
+        news_content = fetch_daily_news(openai_key, today_str)
+        if news_content:
+            st.markdown(news_content)
+        else:
+            st.info("Kunde inte hämta nyheter. Kontrollera din API-nyckel.")
