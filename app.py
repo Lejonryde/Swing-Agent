@@ -27,38 +27,16 @@ st.markdown(
     "    font-weight: 800;"
     "    color: #38bdf8;"
     "}"
-    ".stock-card {"
+    ".stock-box {"
     "    background: #161b22;"
-    "    border-radius: 8px;"
-    "    padding: 12px;"
-    "    margin-bottom: 10px;"
     "    border: 1px solid #30363d;"
+    "    border-radius: 8px;"
+    "    padding: 15px;"
+    "    margin-bottom: 15px;"
     "}"
     "</style>",
     unsafe_allow_html=True
 )
-
-# Domän-mapping för 100% garanterade logotyper via Clearbit
-DOMAIN_MAP = {
-    "VOLV-B.ST": "volvogroup.com",
-    "ERIC-B.ST": "ericsson.com",
-    "SSAB-B.ST": "ssab.com",
-    "SBB-B.ST": "sbbnorden.se",
-    "TELIA.ST": "teliacompany.com",
-    "SINCH.ST": "sinch.com",
-    "NVDA": "nvidia.com",
-    "TSLA": "tesla.com",
-    "AMD": "amd.com",
-    "PLTR": "palantir.com"
-}
-
-def get_logo_url(ticker):
-    domain = DOMAIN_MAP.get(ticker.upper())
-    if domain:
-        return f"https://logo.clearbit.com/{domain}"
-    # Fallback om domän saknas
-    clean_ticker = ticker.split('.')[0].lower()
-    return f"https://logo.clearbit.com/{clean_ticker}.com"
 
 # Huvudrubrik
 st.markdown('<div class="brand-title">👑 SWING KING TERMINAL</div>', unsafe_allow_html=True)
@@ -84,7 +62,7 @@ col_buy, col_sell = st.columns(2, gap="large")
 with col_buy:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #38bdf8;'>KÖP & BREAKOUTS</h4>", unsafe_allow_html=True)
-    st.write("Analyserar stängningskurser, grafer och momentum.")
+    st.write("Analyserar stängningskurser, veckografer och momentum.")
     
     run_buy = st.button("🚀 KÖP-ANALYS", use_container_width=True, key="btn_buy")
     
@@ -93,7 +71,7 @@ with col_buy:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar grafer, logotyper och marknadsdata..."):
+            with st.spinner("Hämtar grafer och marknadsdata..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -110,18 +88,15 @@ with col_buy:
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        logo_url = get_logo_url(ticker)
+                        # Snygg box för varje företag med graf
+                        st.markdown(f"""
+                            <div class="stock-box">
+                                <h3 style='margin:0; color: #38bdf8;'>🏢 {ticker}</h3>
+                                <p style='margin:5px 0; font-size: 1.1rem;'><b>Slutkurs:</b> {latest_close:.2f} {valuta} <span style='color: {"#22c55e" if pct_change >= 0 else "#ef4444"};'>({pct_change:+.2f}%)</span> | <b>RSI:</b> {rsi_val:.1f}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
                         
-                        # Visa logo, ticker-data och graf
-                        col_img, col_txt = st.columns([1, 4])
-                        with col_img:
-                            st.image(logo_url, width=45)
-                        with col_txt:
-                            st.markdown(f"### {ticker}")
-                            st.write(f"**Slutkurs:** {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | **RSI:** {rsi_val:.1f}")
-                        
-                        st.line_chart(close_ser.tail(7), height=100)
-                        st.markdown("---")
+                        st.line_chart(close_ser.tail(7), height=110)
                         
                         info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
@@ -148,7 +123,7 @@ with col_buy:
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #f87171;'>SÄLJ & EXITS</h4>", unsafe_allow_html=True)
-    st.write("Identifierar överköpta lägen och rasrisker med grafer.")
+    st.write("Identifierar överköpta lägen, rasrisker och veckografer.")
     
     run_sell = st.button("🛑 SÄLJ-ANALYS", use_container_width=True, key="btn_sell")
     
@@ -157,7 +132,7 @@ with col_sell:
             st.error("❌ Fyll i OpenAI API-nyckel!")
         else:
             stock_data_list = []
-            with st.spinner("Hämtar grafer, logotyper och exit-data..."):
+            with st.spinner("Hämtar grafer och exit-data..."):
                 for ticker in tickers_list:
                     try:
                         stock = yf.Ticker(ticker)
@@ -174,17 +149,14 @@ with col_sell:
                         rsi_series = ta.momentum.rsi(close=close_ser, window=14)
                         rsi_val = rsi_series.iloc[-1]
                         
-                        logo_url = get_logo_url(ticker)
+                        st.markdown(f"""
+                            <div class="stock-box">
+                                <h3 style='margin:0; color: #f87171;'>🏢 {ticker}</h3>
+                                <p style='margin:5px 0; font-size: 1.1rem;'><b>Slutkurs:</b> {latest_close:.2f} {valuta} <span style='color: {"#22c55e" if pct_change >= 0 else "#ef4444"};'>({pct_change:+.2f}%)</span> | <b>RSI:</b> {rsi_val:.1f}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
                         
-                        col_img, col_txt = st.columns([1, 4])
-                        with col_img:
-                            st.image(logo_url, width=45)
-                        with col_txt:
-                            st.markdown(f"### {ticker}")
-                            st.write(f"**Slutkurs:** {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | **RSI:** {rsi_val:.1f}")
-                        
-                        st.line_chart(close_ser.tail(7), height=100)
-                        st.markdown("---")
+                        st.line_chart(close_ser.tail(7), height=110)
                         
                         info_str = f"Ticker: {ticker} | Slutkurs: {latest_close:.2f} {valuta} ({pct_change:+.2f}%) | RSI: {rsi_val:.1f}"
                         stock_data_list.append(info_str)
