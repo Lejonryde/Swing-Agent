@@ -103,9 +103,40 @@ with col_buy:
                         if df.empty or len(df) < 5:
                             continue
                         
-                        friday_close = df.iloc[-1]['Close']
-                        prev_close = df.iloc[-2]['Close']
+                        close_ser = df['Close']
+                        friday_close = close_ser.iloc[-1]
+                        prev_close = close_ser.iloc[-2]
                         pct_change = ((friday_close - prev_close) / prev_close) * 100
                         high_20 = df['High'].max()
                         valuta = "SEK" if ticker.endswith(".ST") else "USD"
-                        rsi = ta.momentum.rsi(df['Close'],
+                        
+                        rsi_series = ta.momentum.rsi(close=close_ser, window=14)
+                        rsi_val = rsi_series.iloc[-1]
+                        
+                        info_str = f"Ticker: {ticker} | Fredag Slutkurs: {friday_close:.2f} {valuta} ({pct_change:+.2f}%) | 20d Högsta: {high_20:.2f} | RSI: {rsi_val:.1f}"
+                        stock_data_list.append(info_str)
+                    except Exception:
+                        continue
+
+                if not stock_data_list:
+                    st.warning("Ingen data hittades för angivna tickers.")
+                else:
+                    market_text = "\n".join(stock_data_list)
+                    client = OpenAI(api_key=openai_key)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "Du är en elit-trader på Lejonryde Capital. Utgå stenhårt från fredagens slutkurser och indata. Leverera en aggressiv rapport på svenska med emojis, exakta entries, tight stop-loss och målkurser."},
+                            {"role": "user", "content": f"Baserat på fredagsdata, vaska fram de 3 starkaste köpcasen:\n{market_text}"}
+                        ]
+                    )
+                    st.success("ANALYS KLAR")
+                    st.markdown(response.choices[0].message.content)
+
+
+# ==================== HÖGER HALVA: RÖD (SÄLJ) ====================
+with col_sell:
+    st.markdown("""
+        <div class="bear-box">
+            <h2 style='color: #f87171; margin: 0; font-weight: 800;'>🔴 DAGENS FÖRETAG</h2>
+            <h4 style='color:
