@@ -55,8 +55,8 @@ st.markdown("""
         background: rgba(22, 27, 34, 0.85);
         border: 1px solid #30363d;
         border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 15px;
+        padding: 14px;
+        margin-bottom: 12px;
         backdrop-filter: blur(5px);
     }
     .report-box {
@@ -64,20 +64,20 @@ st.markdown("""
         border: 1px solid #38bdf8;
         border-left: 5px solid #38bdf8;
         border-radius: 8px;
-        padding: 12px 16px;
-        margin-top: 10px;
-        margin-bottom: 20px;
-        font-size: 0.95rem;
+        padding: 10px 14px;
+        margin-top: 6px;
+        margin-bottom: 18px;
+        font-size: 0.9rem;
     }
     .bear-report-box {
         background: rgba(15, 23, 42, 0.9);
         border: 1px solid #ef4444;
         border-left: 5px solid #ef4444;
         border-radius: 8px;
-        padding: 12px 16px;
-        margin-top: 10px;
-        margin-bottom: 20px;
-        font-size: 0.95rem;
+        padding: 10px 14px;
+        margin-top: 6px;
+        margin-bottom: 18px;
+        font-size: 0.9rem;
     }
     .gazelle-box {
         background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%);
@@ -103,7 +103,7 @@ st.markdown("""
 # Dagens datum
 today_str = datetime.now().strftime("%Y-%m-%d")
 
-# Säkert hämtande av OpenAI API-nyckel från Streamlit Secrets (för publik drift)
+# Säkert hämtande av OpenAI API-nyckel från Streamlit Secrets
 openai_key = ""
 try:
     if "OPENAI_API_KEY" in st.secrets:
@@ -114,13 +114,15 @@ except Exception:
 if not openai_key:
     openai_key = os.environ.get("OPENAI_API_KEY", "")
 
-# Sidebar - Bevakningslista
+# Sidebar - Utökad bevakningslista för att täcka 10+10 aktier
 st.sidebar.header("🕹️ CONTROL PANEL")
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
 custom_tickers = st.sidebar.text_area(
     "Aktiva tickers:", 
-    "VOLV-B.ST, ERIC-B.ST, SSAB-B.ST, SBB-B.ST, "
-    "TELIA.ST, SINCH.ST, EVOL.ST, BOL.ST, NVDA, TSLA, AMD, PLTR"
+    "VOLV-B.ST, ERIC-B.ST, SSAB-B.ST, SBB-B.ST, TELIA.ST, SINCH.ST, "
+    "EVOL.ST, BOL.ST, NDA-SE.ST, GETIB.ST, HEXA-B.ST, ATCO-A.ST, "
+    "SAND.ST, ABB.ST, INVE-B.ST, HM-B.ST, SEB-A.ST, SHB-A.ST, "
+    "NVDA, TSLA, AMD, PLTR, AAPL, MSFT"
 )
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 
@@ -128,7 +130,7 @@ tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 st.markdown(
     f'<div class="logo-header-box">'
     f'<h1 class="logo-title">👑 SWINGKINGS</h1>'
-    f'<div class="logo-sub">SWINGTRADE ENGINE (7-10 DAGAR) // DATUM: {today_str}</div>'
+    f'<div class="logo-sub">SWINGTRADE ENGINE (10+10 AKTIER // 7-10 DAGAR) // DATUM: {today_str}</div>'
     f'</div>',
     unsafe_allow_html=True
 )
@@ -138,7 +140,7 @@ market_data = []
 for ticker in tickers_list:
     try:
         stock = yf.Ticker(ticker)
-        df = stock.history(period="1mo")
+        df = stock.history(period="1.5mo")
         if df.empty or len(df) < 5:
             continue
         close_ser = df['Close']
@@ -170,41 +172,43 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
     st.stop()
 
-# Sortering: Bull (starka trender i tillfällig dipp/svacka) vs Bear
-bull_candidates = sorted([d for d in market_data if d['rsi'] < 55 or d['pct'] <= 1], key=lambda x: x['rsi'])
-if not bull_candidates:
-    bull_candidates = sorted(market_data, key=lambda x: x['rsi'])
+# ==================== STRIKT ÖMSESIDIG uteslutning (MUTUAL EXCLUSIVITY) ====================
+# Sortera alla efter procentuell förändring / momentum
+sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
 
-bear_candidates = sorted([d for d in market_data if d['pct'] < 0 or d['rsi'] < 45], key=lambda x: x['pct'])
-if not bear_candidates: 
-    bear_candidates = market_data[-3:]
+# Top 10 för Bull-divisionen (starka bolag / dip-swings)
+bull_candidates = sorted_market[:10]
+bull_tickers = {item['ticker'] for item in bull_candidates}
 
-top_tickers = set([item['ticker'] for item in bull_candidates[:3]] + [item['ticker'] for item in bear_candidates[:3]])
+# Resterande sorteras för Bear-divisionen (svaga flöden / rasrisker), ta upp till 10
+remaining_for_bear = [d for d in market_data if d['ticker'] not in bull_tickers]
+bear_candidates = sorted(remaining_for_bear, key=lambda x: x['pct'])[:10]
+bear_tickers = {item['ticker'] for item in bear_candidates}
 
-remaining_candidates = [d for d in market_data if d['ticker'] not in top_tickers]
-if not remaining_candidates:
-    remaining_candidates = market_data
-
-gazelle = max(remaining_candidates, key=lambda x: x['volatility'])
+# Välj gasell bland kvarvarande aktier som inte är med i Bull eller Bear
+leftovers = [d for d in market_data if d['ticker'] not in bull_tickers and d['ticker'] not in bear_tickers]
+if not leftovers:
+    leftovers = market_data
+gazelle = max(leftovers, key=lambda x: x['volatility'])
 
 # Delad skärm för Bull och Bear
 col_buy, col_sell = st.columns(2, gap="large")
 
-# ==================== VÄNSTER HALVA: BLÅ (KÖP / DIP-SWINGS) ====================
+# ==================== VÄNSTER HALVA: BLÅ (BULL DIVISION - 10 ST) ====================
 with col_buy:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (DIP-SWINGS)</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #38bdf8;'>STÄRKA CYKLISKA BOLAG I TILLFÄLLIG SVACKA</h4>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #38bdf8;'>STÄRKA BOLAG & KONTROLLERADE DIP-SWINGS</h4>", unsafe_allow_html=True)
     
-    for item in bull_candidates[:3]:
+    for item in bull_candidates:
         pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
         entry_price = item['close'] * 0.985 # Optimerad dipp-entry (-1.5%)
-        target_price = item['close'] * 1.085 # Fast sikte mot +8.5% avkastning på 7-10 dagar
-        stop_loss = item['close'] * 0.955   # Stram riskhantering vid -4.5%
+        target_price = item['close'] * 1.085 # Mål +8.5% avkastning på 7-10 dagar
+        stop_loss = item['close'] * 0.955   # Stram riskhantering (-4.5%)
         
         card_html = (
             f'<div class="stock-card">'
             f'<div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3>'
-            f'<p style="margin: 4px 0; font-size: 1rem;">'
+            f'<p style="margin: 4px 0; font-size: 0.95rem;">'
             f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
             f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
             f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
@@ -212,26 +216,26 @@ with col_buy:
             f'</div></div>'
         )
         st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=120)
+        st.line_chart(item['history'], height=100)
         
         report_html = (
             f'<div class="report-box">'
             f'<b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>'
-            f'• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar in dipp)<br>'
+            f'• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>'
             f'• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>'
             f'• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>'
-            f'• <i>Strategi: Stark cyklisk trend i tillfällig svacka. Perfekt för studs mot kortsiktigt stöd.</i>'
+            f'• <i>Strategi: Stark cyklisk struktur, optimerad för kortsiktig studs.</i>'
             f'</div>'
         )
         st.markdown(report_html, unsafe_allow_html=True)
 
 
-# ==================== HÖGER HALVA: RÖD (SÄLJ / BEAR) ====================
+# ==================== HÖGER HALVA: RÖD (BEAR DIVISION - 10 ST) ====================
 with col_sell:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #f87171;'>SVAGA FLÖDEN & RASRISKER</h4>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color: #f87171;'>SVAGA FLÖDESBOLAG & RASRISKER</h4>", unsafe_allow_html=True)
     
-    for item in bear_candidates[:3]:
+    for item in bear_candidates:
         pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
         short_entry = item['close'] * 1.01
         short_target = item['close'] * 0.92
@@ -240,7 +244,7 @@ with col_sell:
         card_html = (
             f'<div class="stock-card">'
             f'<div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3>'
-            f'<p style="margin: 4px 0; font-size: 1rem;">'
+            f'<p style="margin: 4px 0; font-size: 0.95rem;">'
             f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
             f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
             f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
@@ -248,70 +252,11 @@ with col_sell:
             f'</div></div>'
         )
         st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=120)
+        st.line_chart(item['history'], height=100)
         
         bear_report_html = (
             f'<div class="bear-report-box">'
             f'<b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>'
             f'• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>'
             f'• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>'
-            f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>'
-            f'• <i>Strategi: Negativt momentum och fallande trendkanaler. Undvik långa positioner.</i>'
-            f'</div>'
-        )
-        st.markdown(bear_report_html, unsafe_allow_html=True)
-
-# ==================== VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER) ====================
-gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
-g_entry = gazelle['close'] * 0.98
-g_target = gazelle['close'] * 1.10
-g_stop = gazelle['close'] * 0.93
-
-st.markdown("---")
-gazelle_html = (
-    f'<div class="gazelle-box">'
-    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
-    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
-    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
-    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
-    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
-    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
-    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
-    f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Strategi: Hög volatilitet och starkt momentum ger idealiska förutsättningar för snabba 7-dagarsvinster.</i>'
-    f'</div>'
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle['history'], height=160)
-
-# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK VIA SECRETS) ====================
-st.markdown(
-    '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO (SWING-PERSPEKTIV)</h3>',
-    unsafe_allow_html=True
-)
-
-if not openai_key:
-    st.warning("⚠️ Ingen OpenAI API-nyckel hittades i serverns hemligheter (Secrets). Lägg till `OPENAI_API_KEY` under Settings i Streamlit Cloud för att aktivera den automatiska makrorapporten.")
-else:
-    try:
-        with st.spinner("Analyserar dagsfärska makro- och flödesfaktorer för korta positioner..."):
-            client = OpenAI(api_key=openai_key)
-            news_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": f"Du är en erfaren och skarp aktieinvesterare med fokus på kortsiktig swingtrading (7-10 dagar). Dagens datum är {today_str}. Skriv vassa, dagsaktuella makrokommentarer med fokus på ränteflöden, riskaptit och sektortrender på svenska med emojis."},
-                    {"role": "user", "content": f"Ge mig de viktigaste marknadsdrivarna och makroläget för aktiva swingtraders idag {today_str}."}
-                ]
-            )
-            st.markdown(news_resp.choices[0].message.content)
-    except Exception as e:
-        st.error(f"Kunde inte hämta makrorubriker: {e}")
-
-st.markdown('</div>', unsafe_allow_html=True)
+            f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br
