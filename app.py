@@ -172,7 +172,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
     st.stop()
 
-# Funktion för att generera unika, nyhetsgrundade och branschanpassade strategianalyser
+# Funktion för unika aktieanalyser
 def get_tailored_analysis(ticker, side, rsi, pct):
     t = ticker.upper()
     if "VOLV" in t:
@@ -200,19 +200,16 @@ def get_tailored_analysis(ticker, side, rsi, pct):
         else:
             return f"Negativt momentum med säljare på säljsidan vid varje upprekyld nivå. Trenden pekar nedåt mot starkare långsiktiga stödnivåer, vilket gör långa positioner olämpliga."
 
-# ==================== STRIKT ÖMSESIDIG UTESLUTNING (MUTUAL EXCLUSIVITY) ====================
+# ==================== STRIKT ÖMSESIDIG UTESLUTNING ====================
 sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
 
-# Top 10 för Bull-divisionen
 bull_candidates = sorted_market[:10]
 bull_tickers = {item['ticker'] for item in bull_candidates}
 
-# Resterande sorteras för Bear-divisionen (upp till 10 st)
 remaining_for_bear = [d for d in market_data if d['ticker'] not in bull_tickers]
 bear_candidates = sorted(remaining_for_bear, key=lambda x: x['pct'])[:10]
 bear_tickers = {item['ticker'] for item in bear_candidates}
 
-# Välj gasell bland kvarvarande aktier
 leftovers = [d for d in market_data if d['ticker'] not in bull_tickers and d['ticker'] not in bear_tickers]
 if not leftovers:
     leftovers = market_data
@@ -240,7 +237,6 @@ with col_buy:
         report_html = f'<div class="report-box"><b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>• <i>Marknadsanalys & Strategi:</i> {tailored_text}</div>'
         st.markdown(report_html, unsafe_allow_html=True)
 
-
 # ==================== HÖGER HALVA: RÖD (BEAR DIVISION) ====================
 with col_sell:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
@@ -260,7 +256,7 @@ with col_sell:
         bear_report_html = f'<div class="bear-report-box"><b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>• <i>Omvärldsanalys & Strategi:</i> {tailored_text}</div>'
         st.markdown(bear_report_html, unsafe_allow_html=True)
 
-# ==================== VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER) ====================
+# ==================== VECKANS GASELL ====================
 gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
 g_entry = gazelle['close'] * 0.98
 g_target = gazelle['close'] * 1.10
@@ -271,45 +267,4 @@ gazelle_html = (
     f'<div class="gazelle-box">'
     f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
     f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
-    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
-    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
-    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
-    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
-    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
-    f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Marknadsanalys & Strategi:</i> Utvald som veckans högrisk-gasell på grund av extremt flödesdrivet momentum och breda intradagsintervall. Passar perfekt för en aggressiv 7–10 dagars position med strikt riskhantering.'
-    f'</div>'
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle['history'], height=160)
-
-# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK VIA SECRETS) ====================
-st.markdown(
-    '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 OMNI-RAPPORTEN: BÖRSEN IDAG</h3>'
-    '<p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 15px;">Senaste uppdatering från marknaden • Sammanställt för aktiva swingtraders</p>'
-    
-    '<div style="margin-bottom: 12px;">'
-    '<b>1. Dagens industri (di.se):</b><br>'
-    '<span style="color: #e0e6ed;">👉 Starkt institutionellt flöde i verkstadssektoren – cykliska storbolag visar motståndskraft trots dämpade europeiska indikationer.</span>'
-    '</div>'
-    
-    '<div style="margin-bottom: 12px;">'
-    '<b>2. EFN (efn.se):</b><br>'
-    '<span style="color: #e0e6ed;">👉 Ränteförväntningar och inflationsdata i fokus inför veckans centralbanksbesked – ökad nervositet i högvärderade tillväxtbolag.</span>'
-    '</div>'
-    
-    '<div style="margin-bottom: 6px;">'
-    '<b>3. SvD Näringsliv:</b><br>'
-    '<span style="color: #e0e6ed;">👉 Sjöfarts- och råvaruflöden skapar volatilitet i exportberoende småbolag – experterna tipsar om hur du tajtar din stop-loss.</span>'
-    '</div>'
-    
-    '</div>',
-    unsafe_allow_html=True
-)
+    f'<p style="font-size: 1.
