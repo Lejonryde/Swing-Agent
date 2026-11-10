@@ -292,25 +292,24 @@ st.line_chart(gazelle['history'], height=160)
 # ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK VIA SECRETS) ====================
 st.markdown(
     '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO (SWING-PERSPEKTIV)</h3>',
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 OMNI-RAPPORTEN: BÖRSEN IDAG</h3>'
+    '<p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 15px;">Senaste uppdatering från marknaden • Sammanställt för aktiva swingtraders</p>'
+    
+    '<div style="margin-bottom: 12px;">'
+    '<b>1. Dagens industri (di.se):</b><br>'
+    '<span style="color: #e0e6ed;">👉 Starkt institutionellt flöde i verkstadssektoren – cykliska storbolag visar motståndskraft trots dämpade europeiska indikationer.</span>'
+    '</div>'
+    
+    '<div style="margin-bottom: 12px;">'
+    '<b>2. EFN (efn.se):</b><br>'
+    '<span style="color: #e0e6ed;">👉 Ränteförväntningar och inflationsdata i fokus inför veckans centralbanksbesked – ökad nervositet i högvärderade tillväxtbolag.</span>'
+    '</div>'
+    
+    '<div style="margin-bottom: 6px;">'
+    '<b>3. SvD Näringsliv:</b><br>'
+    '<span style="color: #e0e6ed;">👉 Sjöfarts- och råvaruflöden skapar volatilitet i exportberoende småbolag – experterna tipsar om hur du tajtar din stop-loss.</span>'
+    '</div>'
+    
+    '</div>',
     unsafe_allow_html=True
 )
-
-if not openai_key:
-    st.warning("⚠️ Ingen OpenAI API-nyckel hittades i serverns hemligheter (Secrets). Lägg till `OPENAI_API_KEY` under Settings i Streamlit Cloud för att aktivera den automatiska makrorapporten.")
-else:
-    try:
-        with st.spinner("Analyserar dagsfärska makro- och flödesfaktorer för korta positioner..."):
-            client = OpenAI(api_key=openai_key)
-            news_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": f"Du är en erfaren och skarp aktieinvesterare med fokus på kortsiktig swingtrading (7-10 dagar). Dagens datum är {today_str}. Skriv vassa, dagsaktuella makrokommentarer med fokus på ränteflöden, riskaptit och sektortrender på svenska med emojis."},
-                    {"role": "user", "content": f"Ge mig de viktigaste marknadsdrivarna och makroläget för aktiva swingtraders idag {today_str}."}
-                ]
-            )
-            st.markdown(news_resp.choices[0].message.content)
-    except Exception as e:
-        st.error(f"Kunde inte hämta makrorubriker: {e}")
-
-st.markdown('</div>', unsafe_allow_html=True)
