@@ -2,327 +2,171 @@ import os
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import numpy as np
 import ta
 from datetime import datetime
-from openai import OpenAI
 
-# Sidkonfiguration
+# ==================== SIDKONFIGURATION ====================
 st.set_page_config(
-    page_title="SWINGKINGS",
+    page_title="SWINGKINGS // ARGON ENGINE",
     page_icon="👑",
     layout="wide"
 )
 
-# Mörk neonglödande styling
+# ==================== MÖRK NEONGLÖDANDE STYLING ====================
 st.markdown("""
 <style>
     html, body, [data-testid="stAppViewContainer"] {
-        background: linear-gradient(135deg, #06090f 0%, #0b0e14 50%, #111827 100%) !important;
-        color: #e0e6ed !important;
+        background: linear-gradient(135deg, #05070b 0%, #0a0e17 50%, #0f172a 100%) !important;
+        color: #e2e8f0 !important;
         background-attachment: fixed;
     }
     [data-testid="stSidebar"] {
-        background-color: #0d1117 !important;
-        border-right: 1px solid #1f2937 !important;
+        background-color: #090d14 !important;
+        border-right: 1px solid #1e293b !important;
     }
     .logo-header-box {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(23, 37, 84, 0.85) 100%);
         border: 2px solid #38bdf8;
-        box-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
+        box-shadow: 0 0 35px rgba(56, 189, 248, 0.25);
         border-radius: 16px;
-        padding: 25px 30px;
+        padding: 26px 30px;
         margin-bottom: 25px;
         text-align: center;
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(12px);
     }
     .logo-title {
-        font-size: 3rem;
+        font-size: 3.1rem;
         font-weight: 900;
         letter-spacing: 4px;
-        background: linear-gradient(90deg, #38bdf8, #818cf8, #f43f5e);
+        background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin: 0;
     }
     .logo-sub {
         color: #94a3b8;
-        font-size: 0.95rem;
+        font-size: 0.92rem;
         letter-spacing: 2.5px;
         margin-top: 8px;
         text-transform: uppercase;
+        font-weight: 600;
     }
     .stock-card {
-        background: rgba(22, 27, 34, 0.85);
-        border: 1px solid #30363d;
-        border-radius: 10px;
-        padding: 14px;
-        margin-bottom: 12px;
-        backdrop-filter: blur(5px);
+        background: rgba(17, 24, 39, 0.88);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 10px;
+        backdrop-filter: blur(6px);
+    }
+    .argon-badge {
+        background: linear-gradient(90deg, #0284c7, #2563eb);
+        color: #ffffff;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        float: right;
+    }
+    .bear-badge {
+        background: linear-gradient(90deg, #dc2626, #991b1b);
+        color: #ffffff;
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        float: right;
     }
     .report-box {
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(15, 23, 42, 0.92);
         border: 1px solid #38bdf8;
         border-left: 5px solid #38bdf8;
         border-radius: 8px;
-        padding: 10px 14px;
+        padding: 12px 16px;
         margin-top: 6px;
-        margin-bottom: 18px;
-        font-size: 0.9rem;
+        margin-bottom: 22px;
+        font-size: 0.88rem;
+        line-height: 1.5;
     }
     .bear-report-box {
-        background: rgba(15, 23, 42, 0.9);
+        background: rgba(15, 23, 42, 0.92);
         border: 1px solid #ef4444;
         border-left: 5px solid #ef4444;
         border-radius: 8px;
-        padding: 10px 14px;
+        padding: 12px 16px;
         margin-top: 6px;
-        margin-bottom: 18px;
-        font-size: 0.9rem;
+        margin-bottom: 22px;
+        font-size: 0.88rem;
+        line-height: 1.5;
     }
     .gazelle-box {
-        background: linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(15, 23, 42, 0.9) 100%);
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.14) 0%, rgba(15, 23, 42, 0.95) 100%);
         border: 2px solid #eab308;
-        box-shadow: 0 0 25px rgba(234, 179, 8, 0.25);
+        box-shadow: 0 0 30px rgba(234, 179, 8, 0.25);
         border-radius: 14px;
-        padding: 22px;
-        margin-top: 35px;
+        padding: 24px;
+        margin-top: 30px;
         margin-bottom: 20px;
     }
     .news-box {
-        background: rgba(15, 23, 42, 0.85);
+        background: rgba(15, 23, 42, 0.88);
         border: 1px solid #38bdf8;
         border-radius: 14px;
-        padding: 22px;
+        padding: 24px;
         margin-top: 35px;
         margin-bottom: 30px;
-        backdrop-filter: blur(5px);
+        backdrop-filter: blur(6px);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Dagens datum
 today_str = datetime.now().strftime("%Y-%m-%d")
 
-# Säkert hämtande av OpenAI API-nyckel från Streamlit Secrets
-openai_key = ""
-try:
-    if "OPENAI_API_KEY" in st.secrets:
-        openai_key = st.secrets["OPENAI_API_KEY"]
-except Exception:
-    pass
+# ==================== SIDEBAR & UTÖKAT GULDKORNS-UNIVERSUM ====================
+st.sidebar.header("🕹️ ARGON CONTROL PANEL")
+st.sidebar.subheader("💎 GULDKORNS-UNIVERSUM")
 
-if not openai_key:
-    openai_key = os.environ.get("OPENAI_API_KEY", "")
-
-# Sidebar - Bevakningslista
-st.sidebar.header("🕹️ CONTROL PANEL")
-st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
-custom_tickers = st.sidebar.text_area(
-    "Aktiva tickers:", 
-    "VOLV-B.ST, ERIC-B.ST, SSAB-B.ST, SBB-B.ST, TELIA.ST, SINCH.ST, "
-    "EVOL.ST, BOL.ST, NDA-SE.ST, GETIB.ST, HEXA-B.ST, ATCO-A.ST, "
-    "SAND.ST, ABB.ST, INVE-B.ST, HM-B.ST, SEB-A.ST, SHB-A.ST, "
-    "NVDA, TSLA, AMD, PLTR, AAPL, MSFT"
+default_universe = (
+    "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, "
+    "ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, "
+    "BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, "
+    "SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, "
+    "INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, "
+    "PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
 )
+
+custom_tickers = st.sidebar.text_area("Aktiva tickers (32 st förvalda):", default_universe, height=180)
 tickers_list = [t.strip() for t in custom_tickers.split(",") if t.strip()]
 
-# Inramad SWINGKINGS Logotyp
-st.markdown(
-    f'<div class="logo-header-box">'
-    f'<h1 class="logo-title">👑 SWINGKINGS</h1>'
-    f'<div class="logo-sub">SWINGTRADE ENGINE (10+10 AKTIER // 7-10 DAGAR) // DATUM: {today_str}</div>'
-    f'</div>',
-    unsafe_allow_html=True
+# ==================== LOGOTYP & HEADER ====================
+header_html = (
+    '<div class="logo-header-box">'
+    '<h1 class="logo-title">👑 SWINGKINGS // ARGON</h1>'
+    f'<div class="logo-sub">MULTI-FACTOR QUANT & GOLDMINE SCANNER (10+10 AKTIER // 7-10 DAGAR // MÅL 8-10%) // {today_str}</div>'
+    '</div>'
 )
+st.markdown(header_html, unsafe_allow_html=True)
 
-# Hämtar marknadsdata säkert
-market_data = []
-for ticker in tickers_list:
-    try:
-        stock = yf.Ticker(ticker)
-        df = stock.history(period="1mo")
-        if df.empty or len(df) < 3:
-            continue
-        close_ser = df['Close']
-        latest_close = close_ser.iloc[-1]
-        prev_close = close_ser.iloc[-2]
-        pct_change = ((latest_close - prev_close) / prev_close) * 100
-        valuta = "SEK" if ticker.endswith(".ST") else "USD"
-        rsi_val = ta.momentum.rsi(close=close_ser, window=min(14, len(close_ser)-1)).iloc[-1]
-        high_20 = df['High'].max()
-        low_20 = df['Low'].min()
-        
-        dip_from_peak = ((high_20 - latest_close) / high_20) * 100
-        volatility_spread = ((high_20 - low_20) / low_20) * 100
-        
-        market_data.append({
-            "ticker": ticker,
-            "close": latest_close,
-            "pct": pct_change,
-            "valuta": valuta,
-            "rsi": rsi_val,
-            "high_20": high_20,
-            "low_20": low_20,
-            "dip_from_peak": dip_from_peak,
-            "volatility": volatility_spread,
-            "history": close_ser.tail(10)
-        })
-    except Exception:
-        continue
-
-if not market_data:
-    st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
-    st.stop()
-
-# Funktion för fördjupad analys inklusive dipp-potential i starka trendbolag
-def get_advanced_analysis(ticker, side, rsi, pct, dip_peak):
-    t = ticker.upper()
-    if "VOLV" in t:
-        return f"Cyklisk verkstadsjätte med starka kassaflöden i en strukturellt uppåtgående industri. <b>Dipp-potential:</b> Aktien befinner sig i en tillfällig rekyl ({dip_peak:.1f}% från 20d topp) vilket skapar en klassisk 'buy-the-dip'-möjlighet i en intakt primärtrend."
-    elif "ERIC" in t:
-        return f"Global telekomledare som gynnas av strukturella 5G- och nätverksuppgraderingar. <b>Dipp-potential:</b> Tillfälligt säljtryck har tryckt ner RSI till {rsi:.1f}, vilket ger en tydlig mean-reversion-potential mot glidande medelvärden."
-    elif "SSAB" in t:
-        return f"Stål- och råvarusektorn uppvisar hög känslighet för globala konjunktursvängningar. <b>Dipp-potential:</b> Den kortsiktiga svackan utgör en attraktiv risk/reward för en snabb rekylstuds upp mot tidigare motstånd."
-    elif "SBB" in t:
-        return f"Fastighetsbolag under hård press från räntekänslighet och svaga kapitalflöden. <b>Trendfaktor:</b> Saknar förnyat köparintresse; tillfälliga uppstudsar används av institutioner för exit."
-    elif "TELIA" in t:
-        return f"Defensivt kassaflödesbolag. <b>Trendfaktor:</b> Låg volatilitet och begränsad tillväxtpotential gör att aktien tenderar att handlas sidledes utan det momentum som krävs för kortsiktiga swingvinster."
-    elif "NVDA" in t or "AMD" in t or "TSLA" in t or "PLTR" in t or "AAPL" in t or "MSFT" in t:
-        if side == "bull":
-            return f"Marknadsledande inom tillväxt- och AI-sektorn med extremt starka institutionella flöden. <b>Dipp-potential:</b> Hälsosam intradagsdipp ({dip_peak:.1f}% från topp) i en urstark uppåtgående bransch ger idealisk hävstång för en 7-dagars studs."
-        else:
-            return f"Högbeta tech-bolag som uppvisar kortsiktig överhettning. <b>Trendfaktor:</b> Vinsthemtagningar och fallande momentum vid motståndsnivåer ökar risken för ytterligare nedsida."
-    elif "EVOL" in t:
-        return f"Marknadsledare inom live-casino med branschledande marginaler. <b>Dipp-potential:</b> Tillfällig makrooro skapar en omotiverad svacka i ett tillväxtstarkt bolag, vilket bäddar för en kraftfull återhämtning."
-    elif "BOL" in t or "SAND" in t:
-        return f"Industri- och gruvbolag bundet till den globala cykeln. <b>Dipp-potential:</b> Rekylen ned mot tekniska stödnivåer ger en gynnsam ingångspunkt för swingtraders som vill fiska upp billiga cykliska tillgångar."
-    else:
-        if side == "bull":
-            return f"Bolaget uppvisar fundamental styrka trots tillfälligt externt säljtryck. <b>Dipp-potential:</b> Den tillfälliga svackan har rensat ut kortsiktiga spekulanter och öppnat upp ett fördelaktigt uppsidefönster."
-        else:
-            return f"Negativt flöde och sviktande volymer vid varje uppgångsförsök. <b>Trendfaktor:</b> Brist på köparstöd gör att nedsidan dominerar."
-
-# ==================== STRIKT ÖMSESIDIG UTESLUTNING ====================
-sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
-
-bull_candidates = sorted_market[:10]
-bull_tickers = {item['ticker'] for item in bull_candidates}
-
-remaining_for_bear = [d for d in market_data if d['ticker'] not in bull_tickers]
-bear_candidates = sorted(remaining_for_bear, key=lambda x: x['pct'])[:10]
-bear_tickers = {item['ticker'] for item in bear_candidates}
-
-leftovers = [d for d in market_data if d['ticker'] not in bull_tickers and d['ticker'] not in bear_tickers]
-if not leftovers:
-    leftovers = market_data
-gazelle = max(leftovers, key=lambda x: x['volatility'])
-
-# Delad skärm för Bull och Bear
-col_buy, col_sell = st.columns(2, gap="large")
-
-# ==================== VÄNSTER HALVA: BLÅ (BULL DIVISION) ====================
-with col_buy:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #38bdf8;'>STÄRKA BOLAG & KONTROLLERADE DIP-SWINGS</h4>", unsafe_allow_html=True)
-    
-    for item in bull_candidates:
-        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        entry_price = item['close'] * 0.985
-        target_price = item['close'] * 1.085
-        stop_loss = item['close'] * 0.955
-        advanced_text = get_advanced_analysis(item['ticker'], "bull", item['rsi'], item['pct'], item['dip_from_peak'])
-        
-        card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Högsta: {item["high_20"]:.2f} {item["valuta"]} (Dipp: -{item["dip_from_peak"]:.1f}%)</small></div></div>'
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=100)
-        
-        report_html = f'<div class="report-box"><b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>• <i>Fördjupad Analys & Dipp-potential:</i> {advanced_text}</div>'
-        st.markdown(report_html, unsafe_allow_html=True)
-
-# ==================== HÖGER HALVA: RÖD (BEAR DIVISION) ====================
-with col_sell:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #f87171;'>SVAGA FLÖDESBOLAG & RASRISKER</h4>", unsafe_allow_html=True)
-    
-    for item in bear_candidates:
-        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        short_entry = item['close'] * 1.01
-        short_target = item['close'] * 0.92
-        short_stop = item['close'] * 1.035
-        advanced_text = get_advanced_analysis(item['ticker'], "bear", item['rsi'], item['pct'], item['dip_from_peak'])
-        
-        card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small></div></div>'
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=100)
-        
-        bear_report_html = f'<div class="bear-report-box"><b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>• <i>Fördjupad Analys & Trendfaktor:</i> {advanced_text}</div>'
-        st.markdown(bear_report_html, unsafe_allow_html=True)
-
-# ==================== VECKANS GASELL ====================
-gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
-g_entry = gazelle['close'] * 0.98
-g_target = gazelle['close'] * 1.10
-g_stop = gazelle['close'] * 0.93
-
-st.markdown("---")
-gazelle_html = (
-    f'<div class="gazelle-box">'
-    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
-    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
-    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
-    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
-    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
-    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
-    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
-    f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Marknadsanalys & Strategi:</i> Utvald som veckans högrisk-gasell på grund av extremt flödesdrivet momentum och breda intradagsintervall. Passar perfekt för en aggressiv 7–10 dagars position med strikt riskhantering.'
-    f'</div>'
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle['history'], height=160)
-
-# ==================== OMNI-RAPPORTEN: 3 RUBRIKER PER KÄLLA MED KLICKBARA LÄNKAR ====================
-omni_html = """
-<div class="news-box">
-<h3 style="color: #38bdf8; margin-top: 0;">📰 OMNI-RAPPORTEN: BÖRSEN IDAG</h3>
-<p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Dagsfärska marknadsöversikter och omvärldsbevakning för aktiva swingtraders</p>
-
-<!-- 1. Dagens industri -->
-<div style="margin-bottom: 18px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.di.se" target="_blank" style="color: #38bdf8; text-decoration: none;">Dagens industri (di.se)</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Starkt institutionellt flöde i verkstadssektoren – cykliska storbolag visar motståndskraft.</a></li>
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Börsanalytikerna om Q3-rapporterna: Här är vinnarna som trotsar konjunkturoron.</a></li>
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Råvarupriser i fokus efter nya exportbesked från Asien.</a></li>
-</ul>
-</div>
-
-<!-- 2. EFN -->
-<div style="margin-bottom: 18px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.efn.se" target="_blank" style="color: #38bdf8; text-decoration: none;">EFN (efn.se)</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Ränteförväntningar och inflationsdata i blickfånget inför kommande centralbanksbesked.</a></li>
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Teknisk analys: Så handlar du högrisk-tech i det nuvarande makroklimatet.</a></li>
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Experten: ”Det här är nyckeln för att tajta din stop-loss i svängiga marknader”.</a></li>
-</ul>
-</div>
-
-<!-- 3. SvD Näringsliv -->
-<div style="margin-bottom: 6px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #38bdf8; text-decoration: none;">SvD Näringsliv</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Sjöfarts- och logistikflöden skapar nya flaskhalsar för exportbolagen.</a></li>
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Svenska fastighetsmarknaden: Så navigerar institutionerna bland skulder och obligationer.</a></li>
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Energiomställningen driver på investeringarna i gröna industribolag.</a></li>
-</ul>
-</div>
-
-</div>
-"""
-st.markdown(omni_html, unsafe_allow_html=True)
+# ==================== SEKTOR- & FUNDAMENTAL DATABAS ====================
+SECTOR_PROFILES = {
+    "VOLV-B.ST": (" Tung Verkstad & Transport", "Urstark balansräkning, hög direktavkastning och stark prisdisciplin i konjunkturcykeln."),
+    "SAAB-B.ST": ("Försvar & Säkerhet", "Strukturell supercykel driven av ökande europeiska försvarsanslag och rekordstor orderbok."),
+    "MYCR.ST": ("Halvledarutrustning & Tech", "Global monopolställning inom maskritare för bildskärmar och halvledare med extrema bruttomarginaler."),
+    "BONE.ST": ("Medtech & Ortopedi", "Explosiv försäljningstillväxt i USA för syntetiska bengraft med skyllhöga bruttomarginaler."),
+    "CAMX.ST": ("Biotech & Läkemedel", "Stark kommersialisering av depåläkemedel och solida kassaflöden i en ocyklisk tillväxtfas."),
+    "ATCO-A.ST": ("Verkstad & Vakuumteknik", "Kvalitetsledare inom industriell automation och halvledarvakuum som institutioner alltid ackumulerar i dippar."),
+    "ABB.ST": ("Elektrifiering & Automation", "Gynnas direkt av globala elnätsinvesteringar, AI-datacenter och industriell robotisering."),
+    "SAND.ST": ("Gruvutrustning & Verkstad", "Hög exponering mot stigande metallpriser och global gruvautomation med starkt eftermarknadsflöde."),
+    "HEXA-B.ST": ("Mätteknik & Mjukvara", "Hög andel återkommande mjukvaruintäkter och positionerad för industriell digitalisering."),
+    "EVOL.ST": ("iGaming & Tech", "Marknadsdominant med över 60% EBITDA-marginal, starka kassaflöden och aggressiva aktieåterköp."),
+    "BOL.ST": ("Gruvor & Basmetaller", "Direkt hävstång mot koppar-, zink- och guldpriser i elektrifieringsvågen."),
+    "SSAB-B.ST": ("Specialstål & Råvaror", "Högcyklisk stålproducent med stark kassa som rör sig kraftigt vid skiften i europeisk industrikonjunktur."),
+    "FNOX.ST": ("SaaS & Finansiell Mjukvara", "Sveriges starkaste SaaS-ekosystem med prishöjningskraft och skalbara marginaler."),
+    "NIBE-B.ST": ("Värmepumpar & Klimatteknik", "Långsiktig vinnare på europeisk energiomställning som erbjuder kraftiga motreaktioner efter lagerkorrigeringar."),
+    "EMBRAC-B.ST": ("Gaming & Underhållning", "Högvolatil turnaround-kandidat där avknoppningar och spelsläpp driver snabba kortsiktiga flöden."),
+    "SINCH.ST": ("Molnkommunikation", "Räntekänslig tech-outsider med hög beta som reagerar explosivt vid lägre marknadsräntor."),
+    "SBB-B.ST": ("Fastigheter", "Skuldtyngt fastighetsbolag med extrem räntekänslighet och volatila obligationsflöden."),
+    "ERIC-B.ST": ("Telekom & 5G", "Cyklisk nätverksjätte där nordamerikanska operatörsinvesteringar styr marginaltrenden."),
+    "HM-B.ST": ("Detaljhandel & Konsument", "Starkt beroende av bruttomarginal, fraktpriser och konsumenternas köpkraft."),
+    "GETI-B.ST": ("Medicinteknik", "Vär
