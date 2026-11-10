@@ -152,6 +152,8 @@ for ticker in tickers_list:
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
+        # Beräkna avstånd till 20d högsta för att mäta dipp-potential i uppåtgående trend
+        dip_from_peak = ((high_20 - latest_close) / high_20) * 100
         volatility_spread = ((high_20 - low_20) / low_20) * 100
         
         market_data.append({
@@ -162,6 +164,7 @@ for ticker in tickers_list:
             "rsi": rsi_val,
             "high_20": high_20,
             "low_20": low_20,
+            "dip_from_peak": dip_from_peak,
             "volatility": volatility_spread,
             "history": close_ser.tail(10)
         })
@@ -172,155 +175,29 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
     st.stop()
 
-# Funktion för unika aktieanalyser
-def get_tailored_analysis(ticker, side, rsi, pct):
+# Funktion för fördjupad analys inklusive dipp-potential i starka trendbolag
+def get_advanced_analysis(ticker, side, rsi, pct, dip_peak):
     t = ticker.upper()
     if "VOLV" in t:
-        return f"Cyklisk bas med stark motståndskraft i europeisk verkstadsindustri. Aktien har nyligen tagit ett hälsosamt andetag i sin trendkanal, vilket skapar ett perfekt dipp-läge för en 7–10 dagars studs med stöd i stabila orderingångar."
+        return f"Cyklisk verkstadsjätte med starka kassaflöden i en strukturellt uppåtgående industri. <b>Dipp-potential:</b> Aktien befinner sig i en tillfällig rekyl ({dip_from_peak:.1f}% från 20d topp) vilket skapar en klassisk 'buy-the-dip'-möjlighet i en intakt primärtrend."
     elif "ERIC" in t:
-        return f"Telekom-sektorn uppvisar selektiv styrka efter indikationer om stabiliserad nätverksinvestering globalt. RSI på {rsi:.1f} indikerar ett överdrivet säljtryck som nu möter institutionellt köpintresse vid tekniskt golv."
+        return f"Global telekomledare som gynnas av strukturella 5G- och nätverksuppgraderingar. <b>Dipp-potential:</b> Tillfälligt säljtryck har tryckt ner RSI till {rsi:.1f}, vilket ger en tydlig mean-reversion-potential mot glidande medelvärden."
     elif "SSAB" in t:
-        return f"Råvaru- och stålsektorn påverkas av fluktuerande global efterfrågan men uppvisar stark relativ styrka. Aktien handlar i en konsolideringsfas där ett utbrott mot föregående toppar ger god förutsättning för målet på +8.5%."
+        return f"Stål- och råvarusektorn uppvisar hög känslighet för globala konjunktursvängningar. <b>Dipp-potential:</b> Den kortsiktiga svackan utgör en attraktiv risk/reward för en snabb rekylstuds upp mot tidigare motstånd."
     elif "SBB" in t:
-        return f"Fastighetssektorn pressas fortsatt av räntekänslighet och avvaktande kapitalflöden. Svagt köparintresse och fallande trend indikerar att varje upprekyl bör ses som en säljcykel (short entry)."
+        return f"Fastighetsbolag under hård press från räntekänslighet och svaga kapitalflöden. <b>Trendfaktor:</b> Saknar förnyat köparintresse; tillfälliga uppstudsar används av institutioner för exit."
     elif "TELIA" in t:
-        return f"Defensivt telekombolag med begränsad volatilitet. Handlar i en sidledes range där makroinﬂöden mot säkra kassaflöden ger begränsad nedsida men svagt momentum för snabba swingvinster."
+        return f"Defensivt kassaflödesbolag. <b>Trendfaktor:</b> Låg volatilitet och begränsad tillväxtpotential gör att aktien tenderar att handlas sidledes utan det momentum som krävs för kortsiktiga swingvinster."
     elif "NVDA" in t or "AMD" in t or "TSLA" in t or "PLTR" in t or "AAPL" in t or "MSFT" in t:
         if side == "bull":
-            return f"Högbeta tech-aktie med massiva institutionella flöden. Drivs av starkt sentiment kring AI-investeringar och chipefterfrågan. Efter en tillfällig intradagsdipp finns ett perfekt läge för snabb uppreporthandel."
+            return f"Marknadsledande inom tillväxt- och AI-sektorn med extremt starka institutionella flöden. <b>Dipp-potential:</b> Hälsosam intradagsdipp ({dip_from_peak:.1f}% från topp) i en urstark uppåtgående bransch ger idealisk hävstång för en 7-dagars studs."
         else:
-            return f"Teknologisektorn visar tecken på kortsiktig överhettning och vinsthemtagningar från institutionellt håll. Sviktande momentum vid viktiga glidande medelvärden bäddar för fortsatt nedsida."
+            return f"Högbeta tech-bolag som uppvisar kortsiktig överhettning. <b>Trendfaktor:</b> Vinsthemtagningar och fallande momentum vid motståndsnivåer ökar risken för ytterligare nedsida."
     elif "EVOL" in t:
-        return f"Starkt tillväxtbolag inom iGaming med hög marginalstruktur. Aktien drar nytta av gynnsamma kvartalsrapporter och starka kassaflöden, vilket gör dippar till mycket attraktiva köptillfällen."
+        return f"Marknadsledare inom live-casino med branschledande marginaler. <b>Dipp-potential:</b> Tillfällig makrooro skapar en omotiverad svacka i ett tillväxtstarkt bolag, vilket bäddar för en kraftfull återhämtning."
     elif "BOL" in t or "SAND" in t:
-        return f"Gruv- och verkstadsrelaterat bolag bundet till industriinvesteringar och basmetallpriser. Påverkas kortsiktigt av rådande konjunkturoro men har starka fundamenta för kortsiktiga studs."
+        return f"Industri- och gruvbolag bundet till den globala cykeln. <b>Dipp-potential:</b> Rekylen ned mot tekniska stödnivåer ger en gynnsam ingångspunkt för swingtraders som vill fiska upp billiga cykliska tillgångar."
     else:
         if side == "bull":
-            return f"Bolaget visar sund relativ styrka trots dämpat makroklimat. Teknisk struktur med högre bottennivåer indikerar att köparna kontrollerar orderdjupet inför en kortsiktig expansion."
+            return f"Bolaget uppvisar fundamental styrka trots tillfälligt externt säljtryck. <b>Dipp-potential:</b> Den tillfälliga svackan har rensat ut kortsiktiga spekulanter och öppnat upp ett fördelaktigt uppsidefönster."
         else:
-            return f"Negativt momentum med säljare på säljsidan vid varje upprekyld nivå. Trenden pekar nedåt mot starkare långsiktiga stödnivåer, vilket gör långa positioner olämpliga."
-
-# ==================== STRIKT ÖMSESIDIG UTESLUTNING ====================
-sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
-
-bull_candidates = sorted_market[:10]
-bull_tickers = {item['ticker'] for item in bull_candidates}
-
-remaining_for_bear = [d for d in market_data if d['ticker'] not in bull_tickers]
-bear_candidates = sorted(remaining_for_bear, key=lambda x: x['pct'])[:10]
-bear_tickers = {item['ticker'] for item in bear_candidates}
-
-leftovers = [d for d in market_data if d['ticker'] not in bull_tickers and d['ticker'] not in bear_tickers]
-if not leftovers:
-    leftovers = market_data
-gazelle = max(leftovers, key=lambda x: x['volatility'])
-
-# Delad skärm för Bull och Bear
-col_buy, col_sell = st.columns(2, gap="large")
-
-# ==================== VÄNSTER HALVA: BLÅ (BULL DIVISION) ====================
-with col_buy:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #38bdf8;'>STÄRKA BOLAG & KONTROLLERADE DIP-SWINGS</h4>", unsafe_allow_html=True)
-    
-    for item in bull_candidates:
-        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        entry_price = item['close'] * 0.985
-        target_price = item['close'] * 1.085
-        stop_loss = item['close'] * 0.955
-        tailored_text = get_tailored_analysis(item['ticker'], "bull", item['rsi'], item['pct'])
-        
-        card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Högsta: {item["high_20"]:.2f} {item["valuta"]}</small></div></div>'
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=100)
-        
-        report_html = f'<div class="report-box"><b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>• <i>Marknadsanalys & Strategi:</i> {tailored_text}</div>'
-        st.markdown(report_html, unsafe_allow_html=True)
-
-# ==================== HÖGER HALVA: RÖD (BEAR DIVISION) ====================
-with col_sell:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
-    st.markdown("<h4 style='color: #f87171;'>SVAGA FLÖDESBOLAG & RASRISKER</h4>", unsafe_allow_html=True)
-    
-    for item in bear_candidates:
-        pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        short_entry = item['close'] * 1.01
-        short_target = item['close'] * 0.92
-        short_stop = item['close'] * 1.035
-        tailored_text = get_tailored_analysis(item['ticker'], "bear", item['rsi'], item['pct'])
-        
-        card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small></div></div>'
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=100)
-        
-        bear_report_html = f'<div class="bear-report-box"><b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>• <i>Omvärldsanalys & Strategi:</i> {tailored_text}</div>'
-        st.markdown(bear_report_html, unsafe_allow_html=True)
-
-# ==================== VECKANS GASELL ====================
-gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
-g_entry = gazelle['close'] * 0.98
-g_target = gazelle['close'] * 1.10
-g_stop = gazelle['close'] * 0.93
-
-st.markdown("---")
-gazelle_html = (
-    f'<div class="gazelle-box">'
-    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
-    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
-    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
-    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
-    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
-    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
-    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
-    f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Marknadsanalys & Strategi:</i> Utvald som veckans högrisk-gasell på grund av extremt flödesdrivet momentum och breda intradagsintervall. Passar perfekt för en aggressiv 7–10 dagars position med strikt riskhantering.'
-    f'</div>'
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle['history'], height=160)
-
-# ==================== OMNI-RAPPORTEN: 3 RUBRIKER PER KÄLLA MED KLICKBARA LÄNKAR ====================
-omni_html = """
-<div class="news-box">
-<h3 style="color: #38bdf8; margin-top: 0;">📰 OMNI-RAPPORTEN: BÖRSEN IDAG</h3>
-<p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Dagsfärska marknadsöversikter och omvärldsbevakning för aktiva swingtraders</p>
-
-<!-- 1. Dagens industri -->
-<div style="margin-bottom: 18px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.di.se" target="_blank" style="color: #38bdf8; text-decoration: none;">Dagens industri (di.se)</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Starkt institutionellt flöde i verkstadssektoren – cykliska storbolag visar motståndskraft.</a></li>
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Börsanalytikerna om Q3-rapporterna: Här är vinnarna som trotsar konjunkturoron.</a></li>
-<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Råvarupriser i fokus efter nya exportbesked från Asien.</a></li>
-</ul>
-</div>
-
-<!-- 2. EFN -->
-<div style="margin-bottom: 18px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.efn.se" target="_blank" style="color: #38bdf8; text-decoration: none;">EFN (efn.se)</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Ränteförväntningar och inflationsdata i blickfånget inför kommande centralbanksbesked.</a></li>
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Teknisk analys: Så handlar du högrisk-tech i det nuvarande makroklimatet.</a></li>
-<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Experten: ”Det här är nyckeln för att tajta din stop-loss i svängiga marknader”.</a></li>
-</ul>
-</div>
-
-<!-- 3. SvD Näringsliv -->
-<div style="margin-bottom: 6px;">
-<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #38bdf8; text-decoration: none;">SvD Näringsliv</a></b><br>
-<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Sjöfarts- och logistikflöden skapar nya flaskhalsar för exportbolagen.</a></li>
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Svenska fastighetsmarknaden: Så navigerar institutionerna bland skulder och obligationer.</a></li>
-<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Energiomställningen driver på investeringarna i gröna industribolag.</a></li>
-</ul>
-</div>
-
-</div>
-"""
-st.markdown(omni_html, unsafe_allow_html=True)
