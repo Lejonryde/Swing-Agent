@@ -267,4 +267,60 @@ gazelle_html = (
     f'<div class="gazelle-box">'
     f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
     f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.
+    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
+    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
+    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
+    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
+    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
+    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
+    f'</p>'
+    f'<hr style="border-color: #eab308; opacity: 0.3;">'
+    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
+    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
+    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
+    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
+    f'• <i>Marknadsanalys & Strategi:</i> Utvald som veckans högrisk-gasell på grund av extremt flödesdrivet momentum och breda intradagsintervall. Passar perfekt för en aggressiv 7–10 dagars position med strikt riskhantering.'
+    f'</div>'
+)
+st.markdown(gazelle_html, unsafe_allow_html=True)
+st.line_chart(gazelle['history'], height=160)
+
+# ==================== OMNI-RAPPORTEN: 3 RUBRIKER PER KÄLLA MED KLICKBARA LÄNKAR ====================
+omni_html = """
+<div class="news-box">
+<h3 style="color: #38bdf8; margin-top: 0;">📰 OMNI-RAPPORTEN: BÖRSEN IDAG</h3>
+<p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Dagsfärska marknadsöversikter och omvärldsbevakning för aktiva swingtraders</p>
+
+<!-- 1. Dagens industri -->
+<div style="margin-bottom: 18px;">
+<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.di.se" target="_blank" style="color: #38bdf8; text-decoration: none;">Dagens industri (di.se)</a></b><br>
+<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
+<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Starkt institutionellt flöde i verkstadssektoren – cykliska storbolag visar motståndskraft.</a></li>
+<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Börsanalytikerna om Q3-rapporterna: Här är vinnarna som trotsar konjunkturoron.</a></li>
+<li><a href="https://www.di.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Råvarupriser i fokus efter nya exportbesked från Asien.</a></li>
+</ul>
+</div>
+
+<!-- 2. EFN -->
+<div style="margin-bottom: 18px;">
+<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.efn.se" target="_blank" style="color: #38bdf8; text-decoration: none;">EFN (efn.se)</a></b><br>
+<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
+<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Ränteförväntningar och inflationsdata i blickfånget inför kommande centralbanksbesked.</a></li>
+<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Teknisk analys: Så handlar du högrisk-tech i det nuvarande makroklimatet.</a></li>
+<li><a href="https://www.efn.se" target="_blank" style="color: #e0e6ed; text-decoration: none;">Experten: ”Det här är nyckeln för att tajta din stop-loss i svängiga marknader”.</a></li>
+</ul>
+</div>
+
+<!-- 3. SvD Näringsliv -->
+<div style="margin-bottom: 6px;">
+<b style="color: #38bdf8; font-size: 1.05rem;"><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #38bdf8; text-decoration: none;">SvD Näringsliv</a></b><br>
+<ul style="margin: 5px 0 0 20px; color: #e0e6ed; font-size: 0.92rem;">
+<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Sjöfarts- och logistikflöden skapar nya flaskhalsar för exportbolagen.</a></li>
+<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Svenska fastighetsmarknaden: Så navigerar institutionerna bland skulder och obligationer.</a></li>
+<li><a href="https://www.svd.se/naringsliv" target="_blank" style="color: #e0e6ed; text-decoration: none;">Energiomställningen driver på investeringarna i gröna industribolag.</a></li>
+</ul>
+</div>
+
+</div>
+"""
+st.markdown(omni_html, unsafe_allow_html=True)
