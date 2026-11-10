@@ -114,7 +114,7 @@ except Exception:
 if not openai_key:
     openai_key = os.environ.get("OPENAI_API_KEY", "")
 
-# Sidebar - Utökad bevakningslista för att täcka 10+10 aktier
+# Sidebar - Utökad bevakningslista för 10+10 aktier
 st.sidebar.header("🕹️ CONTROL PANEL")
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
 custom_tickers = st.sidebar.text_area(
@@ -173,19 +173,18 @@ if not market_data:
     st.stop()
 
 # ==================== STRIKT ÖMSESIDIG uteslutning (MUTUAL EXCLUSIVITY) ====================
-# Sortera alla efter procentuell förändring / momentum
 sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
 
-# Top 10 för Bull-divisionen (starka bolag / dip-swings)
+# Top 10 för Bull-divisionen
 bull_candidates = sorted_market[:10]
 bull_tickers = {item['ticker'] for item in bull_candidates}
 
-# Resterande sorteras för Bear-divisionen (svaga flöden / rasrisker), ta upp till 10
+# Resterande sorteras för Bear-divisionen (upp till 10 st)
 remaining_for_bear = [d for d in market_data if d['ticker'] not in bull_tickers]
 bear_candidates = sorted(remaining_for_bear, key=lambda x: x['pct'])[:10]
 bear_tickers = {item['ticker'] for item in bear_candidates}
 
-# Välj gasell bland kvarvarande aktier som inte är med i Bull eller Bear
+# Välj gasell bland kvarvarande aktier
 leftovers = [d for d in market_data if d['ticker'] not in bull_tickers and d['ticker'] not in bear_tickers]
 if not leftovers:
     leftovers = market_data
@@ -201,9 +200,9 @@ with col_buy:
     
     for item in bull_candidates:
         pct_color = "#22c55e" if item['pct'] >= 0 else "#ef4444"
-        entry_price = item['close'] * 0.985 # Optimerad dipp-entry (-1.5%)
-        target_price = item['close'] * 1.085 # Mål +8.5% avkastning på 7-10 dagar
-        stop_loss = item['close'] * 0.955   # Stram riskhantering (-4.5%)
+        entry_price = item['close'] * 0.985
+        target_price = item['close'] * 1.085
+        stop_loss = item['close'] * 0.955
         
         card_html = (
             f'<div class="stock-card">'
@@ -259,4 +258,63 @@ with col_sell:
             f'<b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>'
             f'• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>'
             f'• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>'
-            f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br
+            f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>'
+            f'• <i>Strategi: Negativt momentum och fallande trendkanaler.</i>'
+            f'</div>'
+        )
+        st.markdown(bear_report_html, unsafe_allow_html=True)
+
+# ==================== VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER) ====================
+gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
+g_entry = gazelle['close'] * 0.98
+g_target = gazelle['close'] * 1.10
+g_stop = gazelle['close'] * 0.93
+
+st.markdown("---")
+gazelle_html = (
+    f'<div class="gazelle-box">'
+    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
+    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
+    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
+    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
+    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
+    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
+    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
+    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
+    f'</p>'
+    f'<hr style="border-color: #eab308; opacity: 0.3;">'
+    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
+    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
+    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
+    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
+    f'• <i>Strategi: Hög volatilitet och starkt momentum ger idealiska förutsättningar för snabba 7-dagarsvinster.</i>'
+    f'</div>'
+)
+st.markdown(gazelle_html, unsafe_allow_html=True)
+st.line_chart(gazelle['history'], height=160)
+
+# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK VIA SECRETS) ====================
+st.markdown(
+    '<div class="news-box">'
+    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO (SWING-PERSPEKTIV)</h3>',
+    unsafe_allow_html=True
+)
+
+if not openai_key:
+    st.warning("⚠️ Ingen OpenAI API-nyckel hittades i serverns hemligheter (Secrets). Lägg till `OPENAI_API_KEY` under Settings i Streamlit Cloud för att aktivera den automatiska makrorapporten.")
+else:
+    try:
+        with st.spinner("Analyserar dagsfärska makro- och flödesfaktorer för korta positioner..."):
+            client = OpenAI(api_key=openai_key)
+            news_resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Du är en erfaren och skarp aktieinvesterare med fokus på kortsiktig swingtrading (7-10 dagar). Dagens datum är {today_str}. Skriv vassa, dagsaktuella makrokommentarer med fokus på ränteflöden, riskaptit och sektortrender på svenska med emojis."},
+                    {"role": "user", "content": f"Ge mig de viktigaste marknadsdrivarna och makroläget för aktiva swingtraders idag {today_str}."}
+                ]
+            )
+            st.markdown(news_resp.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Kunde inte hämta makrorubriker: {e}")
+
+st.markdown('</div>', unsafe_allow_html=True)
