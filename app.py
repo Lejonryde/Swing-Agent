@@ -114,7 +114,7 @@ except Exception:
 if not openai_key:
     openai_key = os.environ.get("OPENAI_API_KEY", "")
 
-# Sidebar - Utökad bevakningslista för 10+10 aktier
+# Sidebar - Bevakningslista
 st.sidebar.header("🕹️ CONTROL PANEL")
 st.sidebar.subheader("🎯 BEVAKNINGSLISTA")
 custom_tickers = st.sidebar.text_area(
@@ -135,20 +135,20 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Hämtar marknadsdata
+# Hämtar marknadsdata säkert (hoppar över trasiga tickers utan att krascha)
 market_data = []
 for ticker in tickers_list:
     try:
         stock = yf.Ticker(ticker)
-        df = stock.history(period="1.5mo")
-        if df.empty or len(df) < 5:
+        df = stock.history(period="1mo")
+        if df.empty or len(df) < 3:
             continue
         close_ser = df['Close']
         latest_close = close_ser.iloc[-1]
         prev_close = close_ser.iloc[-2]
         pct_change = ((latest_close - prev_close) / prev_close) * 100
         valuta = "SEK" if ticker.endswith(".ST") else "USD"
-        rsi_val = ta.momentum.rsi(close=close_ser, window=14).iloc[-1]
+        rsi_val = ta.momentum.rsi(close=close_ser, window=min(14, len(close_ser)-1)).iloc[-1]
         high_20 = df['High'].max()
         low_20 = df['Low'].min()
         
@@ -169,7 +169,7 @@ for ticker in tickers_list:
         continue
 
 if not market_data:
-    st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers.")
+    st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
     st.stop()
 
 # ==================== STRIKT ÖMSESIDIG uteslutning (MUTUAL EXCLUSIVITY) ====================
@@ -193,9 +193,9 @@ gazelle = max(leftovers, key=lambda x: x['volatility'])
 # Delad skärm för Bull och Bear
 col_buy, col_sell = st.columns(2, gap="large")
 
-# ==================== VÄNSTER HALVA: BLÅ (BULL DIVISION - 10 ST) ====================
+# ==================== VÄNSTER HALVA: BLÅ (BULL DIVISION) ====================
 with col_buy:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #38bdf8;'>STÄRKA BOLAG & KONTROLLERADE DIP-SWINGS</h4>", unsafe_allow_html=True)
     
     for item in bull_candidates:
@@ -229,9 +229,9 @@ with col_buy:
         st.markdown(report_html, unsafe_allow_html=True)
 
 
-# ==================== HÖGER HALVA: RÖD (BEAR DIVISION - 10 ST) ====================
+# ==================== HÖGER HALVA: RÖD (BEAR DIVISION) ====================
 with col_sell:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION</h2>", unsafe_allow_html=True)
     st.markdown("<h4 style='color: #f87171;'>SVAGA FLÖDESBOLAG & RASRISKER</h4>", unsafe_allow_html=True)
     
     for item in bear_candidates:
