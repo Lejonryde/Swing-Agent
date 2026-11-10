@@ -135,7 +135,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Hämtar marknadsdata säkert (hoppar över trasiga tickers utan att krascha)
+# Hämtar marknadsdata säkert
 market_data = []
 for ticker in tickers_list:
     try:
@@ -172,7 +172,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
     st.stop()
 
-# ==================== STRIKT ÖMSESIDIG uteslutning (MUTUAL EXCLUSIVITY) ====================
+# ==================== STRIKT ÖMSESIDIG UTESLUTNING (MUTUAL EXCLUSIVITY) ====================
 sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
 
 # Top 10 för Bull-divisionen
@@ -223,7 +223,7 @@ with col_buy:
             f'• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>'
             f'• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>'
             f'• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>'
-            f'• <i>Strategi: Stark cyklisk struktur, optimerad för kortsiktig studs.</i>'
+            f'• <i>Marknadsanalys & Strategi:</i> Stark cyklisk struktur i en kontrollerad kortsiktig svacka. Då makroklimatet präglas av selektiv riskaptit drar institutionellt kapital till bolag med starka kassaflöden och relativ styrka. Detta läge erbjuder en optimal risk/reward-kvot för en 7–10 dagars studs mot kortsiktigt motstånd.'
             f'</div>'
         )
         st.markdown(report_html, unsafe_allow_html=True)
@@ -246,75 +246,4 @@ with col_sell:
             f'<p style="margin: 4px 0; font-size: 0.95rem;">'
             f'<b>{item["close"]:.2f} {item["valuta"]}</b> '
             f'<span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> '
-            f'| RSI: <b>{item["rsi"]:.1f}</b></p>'
-            f'<small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small>'
-            f'</div></div>'
-        )
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item['history'], height=100)
-        
-        bear_report_html = (
-            f'<div class="bear-report-box">'
-            f'<b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>'
-            f'• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>'
-            f'• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>'
-            f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>'
-            f'• <i>Strategi: Negativt momentum och fallande trendkanaler.</i>'
-            f'</div>'
-        )
-        st.markdown(bear_report_html, unsafe_allow_html=True)
-
-# ==================== VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER) ====================
-gazelle_pct_color = "#22c55e" if gazelle['pct'] >= 0 else "#ef4444"
-g_entry = gazelle['close'] * 0.98
-g_target = gazelle['close'] * 1.10
-g_stop = gazelle['close'] * 0.93
-
-st.markdown("---")
-gazelle_html = (
-    f'<div class="gazelle-box">'
-    f'<h2 style="color: #eab308; margin: 0;">🔥 VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER)</h2>'
-    f'<h4 style="color: #38bdf8; margin-top: 5px;">VALD OUTSIDER: {gazelle["ticker"]} (Volatilitet: {gazelle["volatility"]:.1f}%)</h4>'
-    f'<p style="font-size: 1.1rem; margin-bottom: 10px;">'
-    f'<b>Slutkurs:</b> {gazelle["close"]:.2f} {gazelle["valuta"]} '
-    f'<span style="color: {gazelle_pct_color}; font-weight: bold;">({gazelle["pct"]:+.2f}%)</span> | '
-    f'<b>RSI:</b> {gazelle["rsi"]:.1f} | '
-    f'<b>20d Högsta:</b> {gazelle["high_20"]:.2f} {gazelle["valuta"]} | '
-    f'<b>20d Lägsta:</b> {gazelle["low_20"]:.2f} {gazelle["valuta"]}'
-    f'</p>'
-    f'<hr style="border-color: #eab308; opacity: 0.3;">'
-    f'<b>📊 Aggressiv Swing-Rapport (Mål +10%):</b><br>'
-    f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
-    f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
-    f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Strategi: Hög volatilitet och starkt momentum ger idealiska förutsättningar för snabba 7-dagarsvinster.</i>'
-    f'</div>'
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle['history'], height=160)
-
-# ==================== DAGENS EKONOMIRUBRIKER & MAKRO (AUTOMATISK VIA SECRETS) ====================
-st.markdown(
-    '<div class="news-box">'
-    '<h3 style="color: #38bdf8; margin-top: 0;">📰 DAGENS EKONOMIRUBRIKER & MAKRO (SWING-PERSPEKTIV)</h3>',
-    unsafe_allow_html=True
-)
-
-if not openai_key:
-    st.warning("⚠️ Ingen OpenAI API-nyckel hittades i serverns hemligheter (Secrets). Lägg till `OPENAI_API_KEY` under Settings i Streamlit Cloud för att aktivera den automatiska makrorapporten.")
-else:
-    try:
-        with st.spinner("Analyserar dagsfärska makro- och flödesfaktorer för korta positioner..."):
-            client = OpenAI(api_key=openai_key)
-            news_resp = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": f"Du är en erfaren och skarp aktieinvesterare med fokus på kortsiktig swingtrading (7-10 dagar). Dagens datum är {today_str}. Skriv vassa, dagsaktuella makrokommentarer med fokus på ränteflöden, riskaptit och sektortrender på svenska med emojis."},
-                    {"role": "user", "content": f"Ge mig de viktigaste marknadsdrivarna och makroläget för aktiva swingtraders idag {today_str}."}
-                ]
-            )
-            st.markdown(news_resp.choices[0].message.content)
-    except Exception as e:
-        st.error(f"Kunde inte hämta makrorubriker: {e}")
-
-st.markdown('</div>', unsafe_allow_html=True)
+            f'| RSI
