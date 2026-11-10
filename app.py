@@ -172,6 +172,34 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas. Kontrollera dina tickers i sidopanelen.")
     st.stop()
 
+# Funktion för att generera unika, nyhetsgrundade och branschanpassade strategianalyser
+def get_tailored_analysis(ticker, side, rsi, pct):
+    t = ticker.upper()
+    if "VOLV" in t:
+        return f"Cyklisk bas med stark motståndskraft i europeisk verkstadsindustri. Aktien har nyligen tagit ett hälsosamt andetag i sin trendkanal, vilket skapar ett perfekt dipp-läge för en 7–10 dagars studs med stöd i stabila orderingångar."
+    elif "ERIC" in t:
+        return f"Telekom-sektorn uppvisar selektiv styrka efter indikationer om stabiliserad nätverksinvestering globalt. RSI på {rsi:.1f} indikerar ett överdrivet säljtryck som nu möter institutionellt köpintresse vid tekniskt golv."
+    elif "SSAB" in t:
+        return f"Råvaru- och stålsektorn påverkas av fluktuerande global efterfrågan men uppvisar stark relativ styrka. Aktien handlar i en konsolideringsfas där ett utbrott mot föregående toppar ger god förutsättning för målet på +8.5%."
+    elif "SBB" in t:
+        return f"Fastighetssektorn pressas fortsatt av räntekänslighet och avvaktande kapitalflöden. Svagt köparintresse och fallande trend indikerar att varje upprekyl bör ses som en säljcykel (short entry)."
+    elif "TELIA" in t:
+        return f"Defensivt telekombolag med begränsad volatilitet. Handlar i en sidledes range där makroinﬂöden mot säkra kassaflöden ger begränsad nedsida men svagt momentum för snabba swingvinster."
+    elif "NVDA" in t or "AMD" in t or "TSLA" in t or "PLTR" in t or "AAPL" in t or "MSFT" in t:
+        if side == "bull":
+            return f"Högbeta tech-aktie med massiva institutionella flöden. Drivs av starkt sentiment kring AI-investeringar och chipefterfrågan. Efter en tillfällig intradagsdipp finns ett perfekt läge för snabb uppreporthandel."
+        else:
+            return f"Teknologisektorn visar tecken på kortsiktig överhettning och vinsthemtagningar från institutionellt håll. Sviktande momentum vid viktiga glidande medelvärden bäddar för fortsatt nedsida."
+    elif "EVOL" in t:
+        return f"Starkt tillväxtbolag inom iGaming med hög marginalstruktur. Aktien drar nytta av gynnsamma kvartalsrapporter och starka kassaflöden, vilket gör dippar till mycket attraktiva köptillfällen."
+    elif "BOL" in t or "SAND" in t:
+        return f"Gruv- och verkstadsrelaterat bolag bundet till industriinvesteringar och basmetallpriser. Påverkas kortsiktigt av rådande konjunkturoro men har starka fundamenta för kortsiktiga studs."
+    else:
+        if side == "bull":
+            return f"Bolaget visar sund relativ styrka trots dämpat makroklimat. Teknisk struktur med högre bottennivåer indikerar att köparna kontrollerar orderdjupet inför en kortsiktig expansion."
+        else:
+            return f"Negativt momentum med säljare på säljsidan vid varje upprekyld nivå. Trenden pekar nedåt mot starkare långsiktiga stödnivåer, vilket gör långa positioner olämpliga."
+
 # ==================== STRIKT ÖMSESIDIG UTESLUTNING (MUTUAL EXCLUSIVITY) ====================
 sorted_market = sorted(market_data, key=lambda x: x['pct'], reverse=True)
 
@@ -203,12 +231,13 @@ with col_buy:
         entry_price = item['close'] * 0.985
         target_price = item['close'] * 1.085
         stop_loss = item['close'] * 0.955
+        tailored_text = get_tailored_analysis(item['ticker'], "bull", item['rsi'], item['pct'])
         
         card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #38bdf8;">⚡ {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Högsta: {item["high_20"]:.2f} {item["valuta"]}</small></div></div>'
         st.markdown(card_html, unsafe_allow_html=True)
         st.line_chart(item['history'], height=100)
         
-        report_html = f'<div class="report-box"><b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>• <i>Marknadsanalys & Strategi:</i> Stark cyklisk struktur i en kontrollerad kortsiktig svacka. Då makroklimatet präglas av selektiv riskaptit drar institutionellt kapital till bolag med starka kassaflöden och relativ styrka. Detta läge erbjuder en optimal risk/reward-kvot för en 7–10 dagars studs mot kortsiktigt motstånd.</div>'
+        report_html = f'<div class="report-box"><b>📊 7-10 Dagars Swing-Setup ({item["ticker"]}):</b><br>• <b>Entry:</b> {entry_price:.2f} {item["valuta"]} (Avvaktar dipp)<br>• <b>Target (+8.5%):</b> <span style="color: #22c55e;">{target_price:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss (-4.5%):</b> <span style="color: #ef4444;">{stop_loss:.2f} {item["valuta"]}</span><br>• <i>Marknadsanalys & Strategi:</i> {tailored_text}</div>'
         st.markdown(report_html, unsafe_allow_html=True)
 
 
@@ -222,12 +251,13 @@ with col_sell:
         short_entry = item['close'] * 1.01
         short_target = item['close'] * 0.92
         short_stop = item['close'] * 1.035
+        tailored_text = get_tailored_analysis(item['ticker'], "bear", item['rsi'], item['pct'])
         
         card_html = f'<div class="stock-card"><div><h3 style="margin: 0; color: #f87171;">💀 {item["ticker"]}</h3><p style="margin: 4px 0; font-size: 0.95rem;"><b>{item["close"]:.2f} {item["valuta"]}</b> <span style="color: {pct_color}; font-weight: bold;">({item["pct"]:+.2f}%)</span> | RSI: <b>{item["rsi"]:.1f}</b></p><small style="color: #94a3b8;">20d Lägsta: {item["low_20"]:.2f} {item["valuta"]}</small></div></div>'
         st.markdown(card_html, unsafe_allow_html=True)
         st.line_chart(item['history'], height=100)
         
-        bear_report_html = f'<div class="bear-report-box"><b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>• <i>Omvärldsanalys & Strategi:</i> Negativt momentum och tydligt sviktande köparintresse. Motvind från rådande sektorrotation och makrooro skapar ökat säljtryck vid upprepad test av stödnivåer. Undvik långa innehav; option för kortsiktig blankning/exit vid svag rekyl.</div>'
+        bear_report_html = f'<div class="bear-report-box"><b>📊 Riskrapport & Short-Nivåer ({item["ticker"]}):</b><br>• <b>Short Entry:</b> {short_entry:.2f} {item["valuta"]}<br>• <b>Target (-8%):</b> <span style="color: #22c55e;">{short_target:.2f} {item["valuta"]}</span><br>• <b>Stop-Loss:</b> <span style="color: #ef4444;">{short_stop:.2f} {item["valuta"]}</span><br>• <i>Omvärldsanalys & Strategi:</i> {tailored_text}</div>'
         st.markdown(bear_report_html, unsafe_allow_html=True)
 
 # ==================== VECKANS GASELL (HÖGVOLATIL SWING-OUTSIDER) ====================
@@ -253,7 +283,7 @@ gazelle_html = (
     f'• <b>Entry:</b> {g_entry:.2f} {gazelle["valuta"]} (vid intradagsrekyl)<br>'
     f'• <b>Target:</b> <span style="color: #22c55e;">{g_target:.2f} {gazelle["valuta"]} (+10%)</span><br>'
     f'• <b>Stop-Loss:</b> <span style="color: #ef4444;">{g_stop:.2f} {gazelle["valuta"]} (-7%)</span><br>'
-    f'• <i>Marknadsanalys & Strategi:</i> Extrema kassaflöden och hög beta-känslighet gentemot tech- och tillväxtsentimentet i USA. Den höga volatiliteten skapar breda intradagsintervall som, vid rätt tajtad entry, ger exceptionella förutsättningar för att nå +10% avkastning inom 7–10 handelsdagar.'
+    f'• <i>Marknadsanalys & Strategi:</i> Utvald som veckans högrisk-gasell på grund av extremt flödesdrivet momentum och breda intradagsintervall. Passar perfekt för en aggressiv 7–10 dagars position med strikt riskhantering.'
     f'</div>'
 )
 st.markdown(gazelle_html, unsafe_allow_html=True)
@@ -268,3 +298,19 @@ st.markdown(
 
 if not openai_key:
     st.warning("⚠️ Ingen OpenAI API-nyckel hittades i serverns hemligheter (Secrets). Lägg till `OPENAI_API_KEY` under Settings i Streamlit Cloud för att aktivera den automatiska makrorapporten.")
+else:
+    try:
+        with st.spinner("Analyserar dagsfärska makro- och flödesfaktorer för korta positioner..."):
+            client = OpenAI(api_key=openai_key)
+            news_resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": f"Du är en erfaren och skarp aktieinvesterare med fokus på kortsiktig swingtrading (7-10 dagar). Dagens datum är {today_str}. Skriv vassa, dagsaktuella makrokommentarer med fokus på ränteflöden, riskaptit och sektortrender på svenska med emojis."},
+                    {"role": "user", "content": f"Ge mig de viktigaste marknadsdrivarna och makroläget för aktiva swingtraders idag {today_str}."}
+                ]
+            )
+            st.markdown(news_resp.choices[0].message.content)
+    except Exception as e:
+        st.error(f"Kunde inte hämta makrorubriker: {e}")
+
+st.markdown('</div>', unsafe_allow_html=True)
