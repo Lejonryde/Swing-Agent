@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import ta
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SWINGKINGS // ARGON v2.0 - Paper Trading", page_icon="👑", layout="wide")
 
@@ -28,7 +28,8 @@ html, body, [data-testid="stAppViewContainer"] { background: linear-gradient(135
 """
 st.markdown(CSS_STYLE, unsafe_allow_html=True)
 
-today_str = datetime.now().strftime("%Y-%m-%d %H:%M")
+today_dt = datetime.now()
+today_str = today_dt.strftime("%Y-%m-%d %H:%M")
 
 # --- SIDOMENY & PORTFÖJLINSTÄLLNINGAR ---
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
@@ -43,12 +44,11 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    f"<div class='logo-sub'>AUTO-REFRESH (1h) // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
+    f"<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
     "</div>",
     unsafe_allow_html=True
 )
 
-# TTL satt till 3600 sekunder (1 timme) för automatisk uppdatering av kurser
 @st.cache_data(ttl=3600)
 def fetch_argon_v2_data(tickers):
     omx_5d, spx_5d = 0.0, 0.0
@@ -145,93 +145,4 @@ st.markdown(f"""
 <div class="sim-box">
     <h3 style="color: #10b981; margin: 0 0 10px 0;">📊 PAPER TRADING & PORTFÖJ-SIMULATOR (100k SEK)</h3>
     <p style="margin: 0; line-height: 1.6;">
-        Fördelar din startkassa på <b>{fiktiv_kassa:,.0f} SEK</b> i de 3 högst rankade Bull-aktierna. 
-        Kurserna och kassan uppdateras automatiskt varje timme. Innehavstid: <b>{hold_days} dagar</b>.
-    </p>
-</div>
-""", unsafe_allow_html=True)
-
-sim_cols = st.columns(3)
-for idx, stock in enumerate(top_alloc_stocks):
-    with sim_cols[idx]:
-        s_entry = stock["close"] - (0.35 * stock["atr"])
-        s_target = s_entry + (3.2 * stock["atr"])
-        s_stop = s_entry - (1.6 * stock["atr"])
-        shares_sim = int(alloc_per_stock / s_entry) if s_entry > 0 else 0
-        est_potential_roi = ((s_target - s_entry) / s_entry) * 100
-
-        st.markdown(f"""
-        <div class="stock-card" style="border-color: #10b981;">
-            <span class="argon-badge" style="background: #10b981; color: #000;">POSITION #{idx+1}</span>
-            <h4 style="margin: 0; color: #34d399;">⚡ {stock['ticker']}</h4>
-            <p style="margin: 4px 0; font-size: 0.85rem;">Allokerat: <b>{alloc_per_stock:,.0f} {stock['valuta']}</b> ({shares_sim} st)</p>
-            <hr style="border-color: #1e293b; margin: 6px 0;">
-            <p style="margin: 2px 0; font-size: 0.8rem;">• Entry: {s_entry:.2f}</p>
-            <p style="margin: 2px 0; font-size: 0.8rem;">• Target (+ROI): {s_target:.2f} (<span style="color: #10b981;">+{est_potential_roi:.1f}%</span>)</p>
-            <p style="margin: 2px 0; font-size: 0.8rem;">• Stop-Loss: {s_stop:.2f}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-col_left, col_right = st.columns(2, gap="large")
-
-with col_left:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bull_list:
-        entry_p = item["close"] - (0.35 * item["atr"])
-        stop_p = entry_p - max(1.6 * item["atr"], entry_p * 0.035)
-        target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
-        shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
-        card_html = (
-            "<div class='stock-card'>"
-            f"<span class='argon-badge'>SCORE: {item['score']}</span>"
-            f"<h3 style='margin: 0; color: #38bdf8;'>⚡ {item['ticker']}</h3>"
-            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='report-box'>"
-            f"• <b>Entry:</b> {entry_p:.2f} {item['valuta']} | <b>Target:</b> {target_p:.2f} {item['valuta']} | <b>Stop:</b> {stop_p:.2f} {item['valuta']}<br>"
-            f"• <b>Positionsstorlek:</b> <b>{shares} st aktier</b>"
-            "</div>"
-        )
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_plotly_chart(item["history"], "#38bdf8", 100), use_container_width=True, config={"displayModeBar": False})
-
-with col_right:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bear_list:
-        s_entry = item["close"] + (0.35 * item["atr"])
-        s_stop = s_entry + max(1.5 * item["atr"], s_entry * 0.035)
-        s_target = s_entry - max(2.8 * item["atr"], s_entry * 0.08)
-        bear_html = (
-            "<div class='stock-card'>"
-            f"<span class='bear-badge'>SCORE: {item['score']}</span>"
-            f"<h3 style='margin: 0; color: #f87171;'>💀 {item['ticker']}</h3>"
-            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='bear-report-box'>"
-            f"• <b>Short Entry:</b> {s_entry:.2f} {item['valuta']} | <b>Target:</b> {s_target:.2f} {item['valuta']} | <b>Stop:</b> {s_stop:.2f} {item['valuta']}"
-            "</div>"
-        )
-        st.markdown(bear_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_plotly_chart(item["history"], "#f87171", 100), use_container_width=True, config={"displayModeBar": False})
-
-st.markdown("---")
-g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
-g_stop = g_entry - max(1.6 * gazelle["atr"], g_entry * 0.04)
-g_target = g_entry + max(3.5 * gazelle["atr"], g_entry * 0.10)
-g_shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
-
-gazelle_html = (
-    "<div class='gazelle-box'>"
-    f"<span class='gazelle-badge'>SCORE: {gazelle['score']} | 20D SPREAD: {gazelle['volatility']:.1f}%</span>"
-    f"<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: {gazelle['ticker']}</h2>"
-    f"<p style='margin: 8px 0;'><b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} ({gazelle['pct']:+.2f}%) | <b>RS-Alpha:</b> {gazelle['rs_alpha']:+.1f}% | <b>RSI:</b> {gazelle['rsi']:.1f}</p>"
-    "<div style='border-top: 1px solid #334155; padding-top: 10px; margin-top: 8px;'>"
-    f"• <b>Entry (Köpzon):</b> {g_entry:.2f} {gazelle['valuta']} | <b>Target (Exit +10% / 3.5x ATR):</b> {g_target:.2f} {gazelle['valuta']} | <b>Stop-Loss:</b> {g_stop:.2f} {gazelle['valuta']}<br>"
-    f"• <b>Rekommenderad Positionsstorlek:</b> <b>{g_shares} st aktier</b> (vid {risk_pct}% portföljrisk)"
-    "</div>"
-    "</div>"
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.plotly_chart(plot_plotly_chart(gazelle["history"], "#eab308", 150), use_container_width=True, config={"displayModeBar": False})
+        Fördelar din startkassa på <b>{fiktiv_kassa:,.0f}
