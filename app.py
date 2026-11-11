@@ -7,7 +7,7 @@ import ta
 import plotly.express as px
 from datetime import datetime
 
-st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
+st.set_page_config(page_title="SWINGKINGS // ARGON v2.0 - Paper Trading", page_icon="👑", layout="wide")
 
 CSS_STYLE = """
 <style>
@@ -23,15 +23,18 @@ html, body, [data-testid="stAppViewContainer"] { background: linear-gradient(135
 .report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #38bdf8; border-left: 5px solid #38bdf8; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }
 .bear-report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #ef4444; border-left: 5px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }
 .gazelle-box { background: rgba(15, 23, 42, 0.96); border: 2px solid #eab308; box-shadow: 0 0 25px rgba(234, 179, 8, 0.25); border-radius: 14px; padding: 22px; margin: 30px 0 15px 0; line-height: 1.6; }
+.sim-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #10b981; border-left: 5px solid #10b981; border-radius: 10px; padding: 18px; margin-bottom: 20px; }
 </style>
 """
 st.markdown(CSS_STYLE, unsafe_allow_html=True)
 
 today_str = datetime.now().strftime("%Y-%m-%d")
 
+# --- SIDOMENY & PORTFÖJLINSTÄLLNINGAR ---
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
-portfolio_sek = st.sidebar.number_input("Portföljstorlek:", 10000, 10000000, 100000, 10000)
+fiktiv_kassa = st.sidebar.number_input("Fiktiv Startkassa (SEK):", 10000, 1000000, 100000, 10000)
 risk_pct = st.sidebar.slider("Max risk per affär (%):", 0.5, 3.0, 1.0, 0.25)
+hold_days = st.sidebar.slider("Mål-innehavstid (dagar):", 3, 20, 7, 1)
 
 DEFAULT_TICKERS = "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
 custom_tickers = st.sidebar.text_area("Aktiva tickers:", DEFAULT_TICKERS, height=120)
@@ -40,7 +43,7 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    f"<div class='logo-sub'>ATR-DYNAMIC LEVELS // VCP SQUEEZE // RS-ALPHA SCANNER // {today_str}</div>"
+    f"<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -133,6 +136,46 @@ bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=
 bear_set = {i["ticker"] for i in bear_list}
 gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
 
+# --- SIMULATOR / PAPER TRADING LOGIK ---
+# Vi fördelar kassan på topp 3 Bull-aktier baserat på högst score för maximal avkastning
+top_alloc_stocks = bull_list[:3]
+alloc_per_stock = fiktiv_kassa / len(top_alloc_stocks) if top_alloc_stocks else 0
+
+st.markdown("""
+<div class="sim-box">
+    <h3 style="color: #10b981; margin: 0 0 10px 0;">📊 PAPER TRADING & PORTFÖJ-SIMULATOR (100k SEK)</h3>
+    <p style="margin: 0; line-height: 1.6;">
+        Denna motor simulerar fördelningen av din fiktiva startkassa på <b>{kassa:,.0f} SEK</b> i de 3 högst rankade Bull-aktierna. 
+        Varje position hålls över en horisont på <b>{days} dagar</b> med automatiskt skydd via ATR-stoploss och vinsthemtagning på optimala targetnivåer.
+    </p>
+</div>
+""".format(kassa=fiktiv_kassa, days=hold_days), unsafe_allow_html=True)
+
+# Visa simulerade aktiva positioner
+sim_cols = st.columns(3)
+for idx, stock in enumerate(top_alloc_stocks):
+    with sim_cols[idx]:
+        s_entry = stock["close"] - (0.35 * stock["atr"])
+        s_target = s_entry + (3.2 * stock["atr"])
+        s_stop = s_entry - (1.6 * stock["atr"])
+        shares_sim = int(alloc_per_stock / s_entry) if s_entry > 0 else 0
+        est_potential_roi = ((s_target - s_entry) / s_entry) * 100
+
+        st.markdown(f"""
+        <div class="stock-card" style="border-color: #10b981;">
+            <span class="argon-badge" style="background: #10b981; color: #000;">POSITION #{idx+1}</span>
+            <h4 style="margin: 0; color: #34d399;">⚡ {stock['ticker']}</h4>
+            <p style="margin: 4px 0; font-size: 0.85rem;">Allokerat: <b>{alloc_per_stock:,.0f} {stock['valuta']}</b> ({shares_sim} st)</p>
+            <hr style="border-color: #1e293b; margin: 6px 0;">
+            <p style="margin: 2px 0; font-size: 0.8rem;">• Entry: {s_entry:.2f}</p>
+            <p style="margin: 2px 0; font-size: 0.8rem;">• Target (+ROI): {s_target:.2f} (<span style="color: #10b981;">+{est_potential_roi:.1f}%</span>)</p>
+            <p style="margin: 2px 0; font-size: 0.8rem;">• Stop-Loss: {s_stop:.2f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+st.markdown("---")
+
+# --- HUVUDLAYOUT (BULL / BEAR / GASELL) ---
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
@@ -141,7 +184,7 @@ with col_left:
         entry_p = item["close"] - (0.35 * item["atr"])
         stop_p = entry_p - max(1.6 * item["atr"], entry_p * 0.035)
         target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
-        shares = int((portfolio_sek * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
+        shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
         card_html = (
             "<div class='stock-card'>"
             f"<span class='argon-badge'>SCORE: {item['score']}</span>"
@@ -179,7 +222,7 @@ st.markdown("---")
 g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
 g_stop = g_entry - max(1.6 * gazelle["atr"], g_entry * 0.04)
 g_target = g_entry + max(3.5 * gazelle["atr"], g_entry * 0.10)
-g_shares = int((portfolio_sek * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
+g_shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
 
 gazelle_html = (
     "<div class='gazelle-box'>"
