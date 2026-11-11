@@ -109,18 +109,18 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
 portfolio_sek = st.sidebar.number_input("Portföljstorlek:", 10000, 10000000, 100000, 10000)
 risk_pct = st.sidebar.slider("Max risk per affär (%):", 0.5, 3.0, 1.0, 0.25)
-max_risk_cash = portfolio_sek * (risk_pct / 100.0)
 
 DEFAULT_TICKERS = "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
 custom_tickers = st.sidebar.text_area("Aktiva tickers:", DEFAULT_TICKERS, height=120)
 tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") if t.strip()]
 
-st.markdown(f"""
-<div class="logo-header-box">
-    <h1 class="logo-title">👑 SWINGKINGS // ARGON v2.0</h1>
-    <div class="logo-sub">ATR-DYNAMIC LEVELS // VCP SQUEEZE // RS-ALPHA SCANNER // {today_str}</div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    "<div class='logo-header-box'>"
+    f"<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
+    f"<div class='logo-sub'>ATR-DYNAMIC LEVELS // VCP SQUEEZE // RS-ALPHA SCANNER // {today_str}</div>"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 @st.cache_data(ttl=900)
 def fetch_argon_v2_data(tickers):
@@ -157,8 +157,7 @@ def fetch_argon_v2_data(tickers):
             rsi_s = ta.momentum.rsi(close=close, window=14)
             rsi_v = float(rsi_s.iloc[-1]) if not pd.isna(rsi_s.iloc[-1]) else 50.0
             ema10 = float(close.ewm(span=10, adjust=False).mean().iloc[-1])
-            sma20 = float(close.tail(20).mean())
-            sma50 = float(close.tail(50).mean()) if len(close) >= 50 else sma20
+            sma50 = float(close.tail(50).mean()) if len(close) >= 50 else float(close.tail(20).mean())
             high_20 = float(high.tail(20).max())
 
             tr = pd.concat([high - low, (high - close.shift(1)).abs(), (low - close.shift(1)).abs()], axis=1).max(axis=1)
@@ -172,12 +171,9 @@ def fetch_argon_v2_data(tickers):
 
             score = 50.0
             if c_now > sma50: score += 12.0
-            if sma20 >= sma50: score += 8.0
             if rs_alpha > 0.5: score += 10.0
-            if 2.0 <= dip_high <= 12.0 and c_now >= sma50 * 0.95: score += 14.0
-            elif dip_high < 2.0 and pct_1d > 0: score += 8.0
+            if 2.0 <= dip_high <= 12.0: score += 14.0
             if 35.0 <= rsi_v <= 56.0: score += 12.0
-            elif rsi_v < 30.0: score -= 10.0
             argon_score = int(np.clip(score, 10, 99))
 
             results.append({
@@ -185,7 +181,7 @@ def fetch_argon_v2_data(tickers):
                 "rs_alpha": rs_alpha, "valuta": valuta, "rsi": rsi_v, "ema10": ema10,
                 "sma50": sma50, "high_20": high_20, "dip": dip_high, "atr": atr_14,
                 "atr_pct": atr_pct, "rvol": rvol, "volatility": vol_spread,
-                "score": argon_score, "tag": "⚡ MOMENTUM & ATR SETUP", "history": close.tail(15)
+                "score": argon_score, "history": close.tail(15)
             })
         except Exception:
             continue
@@ -213,7 +209,46 @@ with col_left:
         target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
         shares = int((portfolio_sek * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
 
-        st.markdown(f"""
-        <div class="stock-card">
-            <span class="argon-badge">SCORE: {item['score']}</span>
-            <h3 style="margin: 0; color: #38bdf8;">⚡ {item['ticker']}
+        card_html = (
+            "<div class='stock-card'>"
+            f"<span class='argon-badge'>SCORE: {item['score']}</span>"
+            f"<h3 style='margin: 0; color: #38bdf8;'>⚡ {item['ticker']}</h3>"
+            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
+            "</div>"
+            "<div class='report-box'>"
+            f"• <b>Entry:</b> {entry_p:.2f} {item['valuta']} | <b>Target:</b> {target_p:.2f} {item['valuta']} | <b>Stop:</b> {stop_p:.2f} {item['valuta']}<br>"
+            f"• <b>Positionsstorlek:</b> <b>{shares} st aktier</b>"
+            "</div>"
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
+        st.line_chart(item["history"], height=90)
+
+with col_right:
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    for item in bear_list:
+        s_entry = item["close"] + (0.35 * item["atr"])
+        s_stop = s_entry + max(1.5 * item["atr"], s_entry * 0.035)
+        s_target = s_entry - max(2.8 * item["atr"], s_entry * 0.08)
+
+        bear_html = (
+            "<div class='stock-card'>"
+            f"<span class='bear-badge'>SCORE: {item['score']}</span>"
+            f"<h3 style='margin: 0; color: #f87171;'>💀 {item['ticker']}</h3>"
+            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
+            "</div>"
+            "<div class='bear-report-box'>"
+            f"• <b>Short Entry:</b> {s_entry:.2f} {item['valuta']} | <b>Target:</b> {s_target:.2f} {item['valuta']} | <b>Stop:</b> {s_stop:.2f} {item['valuta']}"
+            "</div>"
+        )
+        st.markdown(bear_html, unsafe_allow_html=True)
+        st.line_chart(item["history"], height=90)
+
+st.markdown("---")
+gazelle_html = (
+    "<div class='gazelle-box'>"
+    f"<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: {gazelle['ticker']}</h2>"
+    f"<p><b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} ({gazelle['pct']:+.2f}%) | RS-Alpha: {gazelle['rs_alpha']:+.1f}%</p>"
+    "</div>"
+)
+st.markdown(gazelle_html, unsafe_allow_html=True)
+st.line_chart(gazelle["history"], height=140)
