@@ -112,6 +112,134 @@ def fetch_argon_v2_data(tickers):
     return results
 
 def plot_neon_chart(hist_df, color_hex, height=120):
-    return (
-        alt.Chart(hist_df)
-        .mark_area(line={"color": color_hex, "strokeWidth": 2.5}, color=color
+    chart = alt.Chart(hist_df).mark_area(
+        line={"color": color_hex, "strokeWidth": 2.5},
+        color=color_hex,
+        fillOpacity=0.18
+    ).encode(
+        x=alt.X("Datum:N", title=None, axis=alt.Axis(labelColor="#94a3b8", grid=False, labelAngle=0)),
+        y=alt.Y("Pris:Q", title=None, scale=alt.Scale(zero=False), axis=alt.Axis(labelColor="#94a3b8", gridColor="#1e293b")),
+        tooltip=["Datum", alt.Tooltip("Pris:Q", format=".2f")]
+    ).properties(height=height).configure_view(strokeWidth=0)
+    return chart
+
+market_data = fetch_argon_v2_data(tickers_list)
+if not market_data:
+    st.warning("Ingen marknadsdata kunde hämtas.")
+    st.stop()
+
+sorted_argon = sorted(market_data, key=lambda x: (x["score"], x["rs_alpha"]), reverse=True)
+bull_list = sorted_argon[:10]
+bull_set = {i["ticker"] for i in bull_list}
+bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=lambda x: (x["score"], x["rs_alpha"]))[:10]
+bear_set = {i["ticker"] for i in bear_list}
+gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
+
+# --- PAPER TRADING / PORTFÖJ-SIMULATOR ---
+top_alloc_stocks = bull_list[:3]
+alloc_per_stock = fiktiv_kassa / len(top_alloc_stocks) if top_alloc_stocks else 0
+
+st.markdown(
+    "<div class='sim-box'>"
+    "<h3 style='color: #10b981; margin: 0 0 10px 0;'>📊 PAPER TRADING & PORTFÖJ-SIMULATOR</h3>"
+    "<p style='margin: 0; line-height: 1.6;'>"
+    "Fördelar din startkassa på <b>" + f"{fiktiv_kassa:,.0f}" + " SEK</b> i de 3 högst rankade Bull-aktierna. "
+    "Innehavstid: <b>" + str(hold_days) + " dagar</b> med automatisk timuppdatering."
+    "</p>"
+    "</div>",
+    unsafe_allow_html=True
+)
+
+sim_cols = st.columns(3)
+for idx, stock in enumerate(top_alloc_stocks):
+    with sim_cols[idx]:
+        s_entry = stock["close"] - (0.35 * stock["atr"])
+        s_target = s_entry + (3.2 * stock["atr"])
+        s_stop = s_entry - (1.6 * stock["atr"])
+        shares_sim = int(alloc_per_stock / s_entry) if s_entry > 0 else 0
+        
+        entry_date_str = today_dt.strftime("%Y-%m-%d")
+        exit_date_dt = today_dt + timedelta(days=hold_days)
+        exit_date_str = exit_date_dt.strftime("%Y-%m-%d")
+        
+        pct_since_entry = ((stock["close"] - s_entry) / s_entry) * 100
+        roi_color = "#10b981" if pct_since_entry >= 0 else "#ef4444"
+
+        card_text = (
+            "<div class='stock-card' style='border-color: #10b981;'>"
+            "<span class='argon-badge' style='background: #10b981; color: #000;'>POSITION #" + str(idx+1) + "</span>"
+            "<h4 style='margin: 0; color: #34d399;'>⚡ " + stock['ticker'] + "</h4>"
+            "<p style='margin: 4px 0; font-size: 0.85rem;'>Allokerat: <b>" + f"{alloc_per_stock:,.0f}" + " " + stock['valuta'] + "</b> (" + str(shares_sim) + " st)</p>"
+            "<hr style='border-color: #1e293b; margin: 6px 0;'>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entry-datum:</b> " + entry_date_str + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Planerad Exit:</b> " + exit_date_str + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entrykurs:</b> " + f"{s_entry:.2f}" + " " + stock['valuta'] + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Utveckling:</b> <span style='color: " + roi_color + "; font-weight: bold;'>" + f"{pct_since_entry:+.2f}%</span></p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{s_target:.2f}" + " | <b>Stop:</b> " + f"{s_stop:.2f}" + "</p>"
+            "</div>"
+        )
+        st.markdown(card_text, unsafe_allow_html=True)
+
+st.markdown("---")
+
+col_left, col_right = st.columns(2, gap="large")
+
+with col_left:
+    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    for item in bull_list:
+        entry_p = item["close"] - (0.35 * item["atr"])
+        stop_p = entry_p - max(1.6 * item["atr"], entry_p * 0.035)
+        target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
+        shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
+        card_html = (
+            "<div class='stock-card'>"
+            "<span class='argon-badge'>SCORE: " + str(item['score']) + "</span>"
+            "<h3 style='margin: 0; color: #38bdf8;'>⚡ " + item['ticker'] + "</h3>"
+            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
+            "</div>"
+            "<div class='report-box'>"
+            "• <b>Entry:</b> " + f"{entry_p:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{target_p:.2f}" + " | <b>Stop:</b> " + f"{stop_p:.2f}" + "<br>"
+            "• <b>Positionsstorlek:</b> <b>" + str(shares) + " st aktier</b>"
+            "</div>"
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
+        st.altair_chart(plot_neon_chart(item["history"], "#38bdf8", 115), use_container_width=True)
+
+with col_right:
+    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
+    for item in bear_list:
+        s_entry = item["close"] + (0.35 * item["atr"])
+        s_stop = s_entry + max(1.5 * item["atr"], s_entry * 0.035)
+        s_target = s_entry - max(2.8 * item["atr"], s_entry * 0.08)
+        bear_html = (
+            "<div class='stock-card'>"
+            "<span class='bear-badge'>SCORE: " + str(item['score']) + "</span>"
+            "<h3 style='margin: 0; color: #f87171;'>💀 " + item['ticker'] + "</h3>"
+            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
+            "</div>"
+            "<div class='bear-report-box'>"
+            "• <b>Short Entry:</b> " + f"{s_entry:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{s_target:.2f}" + " | <b>Stop:</b> " + f"{s_stop:.2f}"
+            "</div>"
+        )
+        st.markdown(bear_html, unsafe_allow_html=True)
+        st.altair_chart(plot_neon_chart(item["history"], "#f87171", 115), use_container_width=True)
+
+st.markdown("---")
+g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
+g_stop = g_entry - max(1.6 * gazelle["atr"], g_entry * 0.04)
+g_target = g_entry + max(3.5 * gazelle["atr"], g_entry * 0.10)
+g_shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
+
+gazelle_html = (
+    "<div class='gazelle-box'>"
+    "<span class='gazelle-badge'>SCORE: " + str(gazelle['score']) + " | 20D SPREAD: " + f"{gazelle['volatility']:.1f}" + "%</span>"
+    "<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: " + gazelle['ticker'] + "</h2>"
+    "<p style='margin: 8px 0;'><b>Slutkurs:</b> " + f"{gazelle['close']:.2f}" + " " + gazelle['valuta'] + " (" + f"{gazelle['pct']:+.2f}" + "%) | <b>RS-Alpha:</b> " + f"{gazelle['rs_alpha']:+.1f}" + "% | <b>RSI:</b> " + f"{gazelle['rsi']:.1f}" + "</p>"
+    "<div style='border-top: 1px solid #334155; padding-top: 10px; margin-top: 8px;'>"
+    "• <b>Entry (Köpzon):</b> " + f"{g_entry:.2f}" + " " + gazelle['valuta'] + " | <b>Target:</b> " + f"{g_target:.2f}" + " | <b>Stop-Loss:</b> " + f"{g_stop:.2f}" + "<br>"
+    "• <b>Rekommenderad Positionsstorlek:</b> <b>" + str(g_shares) + " st aktier</b> (vid " + str(risk_pct) + "% portföljrisk)"
+    "</div>"
+    "</div>"
+)
+st.markdown(gazelle_html, unsafe_allow_html=True)
+st.altair_chart(plot_neon_chart(gazelle["history"], "#eab308", 160), use_container_width=True)
