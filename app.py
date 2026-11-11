@@ -4,7 +4,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import ta
-import altair as alt
+import plotly.express as px
 from datetime import datetime
 
 st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
@@ -108,18 +108,18 @@ def fetch_argon_v2_data(tickers):
             continue
     return results
 
-def plot_neon_chart(hist_df, color_hex, height=120):
-    return (
-        alt.Chart(hist_df)
-        .mark_area(line={"color": color_hex, "strokeWidth": 2.5}, color=color_hex, fillOpacity=0.18)
-        .encode(
-            x=alt.X("Datum:N", title=None, axis=alt.Axis(labelColor="#94a3b8", grid=False, labelAngle=0)),
-            y=alt.Y("Pris:Q", title=None, scale=alt.Scale(zero=False), axis=alt.Axis(labelColor="#94a3b8", gridColor="#1e293b")),
-            tooltip=["Datum", alt.Tooltip("Pris:Q", format=".2f")]
-        )
-        .properties(height=height)
-        .configure_view(strokeWidth=0)
+def plot_plotly_chart(hist_df, color_hex, height=110):
+    fig = px.line(hist_df, x="Datum", y="Pris", template="plotly_dark")
+    fig.update_traces(line=dict(color=color_hex, width=2.5), mode="lines")
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15, 23, 42, 0.6)",
+        margin=dict(l=0, r=0, t=5, b=0),
+        height=height,
+        xaxis=dict(showgrid=False, zeroline=False, color="#94a3b8"),
+        yaxis=dict(showgrid=True, gridcolor="#1e293b", zeroline=False, color="#94a3b8")
     )
+    return fig
 
 market_data = fetch_argon_v2_data(tickers_list)
 if not market_data:
@@ -154,7 +154,7 @@ with col_left:
             "</div>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
-        st.altair_chart(plot_neon_chart(item["history"], "#38bdf8", 115), use_container_width=True)
+        st.plotly_chart(plot_plotly_chart(item["history"], "#38bdf8", 100), use_container_width=True, config={"displayModeBar": False})
 
 with col_right:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
@@ -173,7 +173,7 @@ with col_right:
             "</div>"
         )
         st.markdown(bear_html, unsafe_allow_html=True)
-        st.altair_chart(plot_neon_chart(item["history"], "#f87171", 115), use_container_width=True)
+        st.plotly_chart(plot_plotly_chart(item["history"], "#f87171", 100), use_container_width=True, config={"displayModeBar": False})
 
 st.markdown("---")
 g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
@@ -193,5 +193,4 @@ gazelle_html = (
     "</div>"
 )
 st.markdown(gazelle_html, unsafe_allow_html=True)
-st.altair_chart(plot_neon_chart(gazelle["history"], "#eab308", 160), use_container_width=True)
-# --- SLUT PÅ FILEN ---
+st.plotly_chart(plot_plotly_chart(gazelle["history"], "#eab308", 150), use_container_width=True, config={"displayModeBar": False})
