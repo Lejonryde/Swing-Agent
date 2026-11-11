@@ -4,7 +4,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import ta
-import plotly.express as px
+import altair as alt
 from datetime import datetime
 
 st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
@@ -70,6 +70,15 @@ html, body, [data-testid="stAppViewContainer"] {
     font-weight: 700;
     float: right;
 }
+.gazelle-badge {
+    background: linear-gradient(90deg, #eab308, #ca8a04);
+    color: #000000;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    float: right;
+}
 .report-box {
     background: rgba(15, 23, 42, 0.94);
     border: 1px solid #38bdf8;
@@ -77,7 +86,7 @@ html, body, [data-testid="stAppViewContainer"] {
     border-radius: 8px;
     padding: 12px 16px;
     margin-top: 6px;
-    margin-bottom: 22px;
+    margin-bottom: 12px;
     font-size: 0.88rem;
     line-height: 1.55;
 }
@@ -88,7 +97,7 @@ html, body, [data-testid="stAppViewContainer"] {
     border-radius: 8px;
     padding: 12px 16px;
     margin-top: 6px;
-    margin-bottom: 22px;
+    margin-bottom: 12px;
     font-size: 0.88rem;
     line-height: 1.55;
 }
@@ -99,7 +108,8 @@ html, body, [data-testid="stAppViewContainer"] {
     border-radius: 14px;
     padding: 22px;
     margin-top: 30px;
-    margin-bottom: 20px;
+    margin-bottom: 15px;
+    line-height: 1.6;
 }
 </style>
 """
@@ -162,111 +172,4 @@ def fetch_argon_v2_data(tickers):
             high_20 = float(high.tail(20).max())
 
             tr = pd.concat([high - low, (high - close.shift(1)).abs(), (low - close.shift(1)).abs()], axis=1).max(axis=1)
-            atr_14 = float(tr.tail(14).mean())
-            atr_pct = (atr_14 / c_now) * 100
-
-            avg_vol = float(vol.tail(20).mean())
-            rvol = (float(vol.iloc[-1]) / avg_vol) if avg_vol > 0 else 1.0
-            dip_high = ((high_20 - c_now) / high_20) * 100
-            vol_spread = ((high.tail(20).max() - low.tail(20).min()) / low.tail(20).min()) * 100
-
-            score = 50.0
-            if c_now > sma50: score += 12.0
-            if rs_alpha > 0.5: score += 10.0
-            if 2.0 <= dip_high <= 12.0: score += 14.0
-            if 35.0 <= rsi_v <= 56.0: score += 12.0
-            argon_score = int(np.clip(score, 10, 99))
-
-            # Skapa snygg dataframe för Plotly
-            hist_df = pd.DataFrame({"Pris": close.tail(20)})
-            hist_df.index = hist_df.index.strftime('%Y-%m-%d')
-
-            results.append({
-                "ticker": ticker, "close": c_now, "y_high": y_high, "pct": pct_1d,
-                "rs_alpha": rs_alpha, "valuta": valuta, "rsi": rsi_v, "ema10": ema10,
-                "sma50": sma50, "high_20": high_20, "dip": dip_high, "atr": atr_14,
-                "atr_pct": atr_pct, "rvol": rvol, "volatility": vol_spread,
-                "score": argon_score, "history": hist_df
-            })
-        except Exception:
-            continue
-    return results
-
-def plot_cool_chart(hist_df, color_hex, height=110):
-    fig = px.line(hist_df, x=hist_df.index, y="Pris", template="plotly_dark")
-    fig.update_traces(line=dict(color=color_hex, width=2.5), mode="lines")
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15, 23, 42, 0.6)",
-        margin=dict(l=0, r=0, t=5, b=0),
-        height=height,
-        xaxis=dict(showgrid=False, zeroline=False, color="#94a3b8"),
-        yaxis=dict(showgrid=True, gridcolor="#1e293b", zeroline=False, color="#94a3b8")
-    )
-    return fig
-
-market_data = fetch_argon_v2_data(tickers_list)
-if not market_data:
-    st.warning("Ingen marknadsdata kunde hämtas.")
-    st.stop()
-
-sorted_argon = sorted(market_data, key=lambda x: (x["score"], x["rs_alpha"]), reverse=True)
-bull_list = sorted_argon[:10]
-bull_set = {i["ticker"] for i in bull_list}
-bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=lambda x: (x["score"], x["rs_alpha"]))[:10]
-bear_set = {i["ticker"] for i in bear_list}
-gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
-
-col_left, col_right = st.columns(2, gap="large")
-
-with col_left:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bull_list:
-        entry_p = item["close"] - (0.35 * item["atr"])
-        stop_p = entry_p - max(1.6 * item["atr"], entry_p * 0.035)
-        target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
-        shares = int((portfolio_sek * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
-
-        card_html = (
-            "<div class='stock-card'>"
-            f"<span class='argon-badge'>SCORE: {item['score']}</span>"
-            f"<h3 style='margin: 0; color: #38bdf8;'>⚡ {item['ticker']}</h3>"
-            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='report-box'>"
-            f"• <b>Entry:</b> {entry_p:.2f} {item['valuta']} | <b>Target:</b> {target_p:.2f} {item['valuta']} | <b>Stop:</b> {stop_p:.2f} {item['valuta']}<br>"
-            f"• <b>Positionsstorlek:</b> <b>{shares} st aktier</b>"
-            "</div>"
-        )
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_cool_chart(item["history"], "#38bdf8", 100), use_container_width=True, config={"displayModeBar": False})
-
-with col_right:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bear_list:
-        s_entry = item["close"] + (0.35 * item["atr"])
-        s_stop = s_entry + max(1.5 * item["atr"], s_entry * 0.035)
-        s_target = s_entry - max(2.8 * item["atr"], s_entry * 0.08)
-
-        bear_html = (
-            "<div class='stock-card'>"
-            f"<span class='bear-badge'>SCORE: {item['score']}</span>"
-            f"<h3 style='margin: 0; color: #f87171;'>💀 {item['ticker']}</h3>"
-            f"<p style='margin: 4px 0;'><b>{item['close']:.2f} {item['valuta']}</b> ({item['pct']:+.2f}%) | RS-Alpha: {item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='bear-report-box'>"
-            f"• <b>Short Entry:</b> {s_entry:.2f} {item['valuta']} | <b>Target:</b> {s_target:.2f} {item['valuta']} | <b>Stop:</b> {s_stop:.2f} {item['valuta']}"
-            "</div>"
-        )
-        st.markdown(bear_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_cool_chart(item["history"], "#f87171", 100), use_container_width=True, config={"displayModeBar": False})
-
-st.markdown("---")
-gazelle_html = (
-    "<div class='gazelle-box'>"
-    f"<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: {gazelle['ticker']}</h2>"
-    f"<p><b>Slutkurs:</b> {gazelle['close']:.2f} {gazelle['valuta']} ({gazelle['pct']:+.2f}%) | RS-Alpha: {gazelle['rs_alpha']:+.1f}%</p>"
-    "</div>"
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.plotly_chart(plot_cool_chart(gazelle["history"], "#eab308", 150), use_container_width=True, config={"displayModeBar": False})
+            atr_14 = float
