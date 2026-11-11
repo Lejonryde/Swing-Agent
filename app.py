@@ -28,7 +28,7 @@ html, body, [data-testid="stAppViewContainer"] { background: linear-gradient(135
 """
 st.markdown(CSS_STYLE, unsafe_allow_html=True)
 
-today_str = datetime.now().strftime("%Y-%m-%d")
+today_str = datetime.now().strftime("%Y-%m-%d %H:%M")
 
 # --- SIDOMENY & PORTFÖJLINSTÄLLNINGAR ---
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
@@ -43,12 +43,13 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    f"<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
+    f"<div class='logo-sub'>AUTO-REFRESH (1h) // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
     "</div>",
     unsafe_allow_html=True
 )
 
-@st.cache_data(ttl=900)
+# TTL satt till 3600 sekunder (1 timme) för automatisk uppdatering av kurser
+@st.cache_data(ttl=3600)
 def fetch_argon_v2_data(tickers):
     omx_5d, spx_5d = 0.0, 0.0
     try:
@@ -136,22 +137,20 @@ bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=
 bear_set = {i["ticker"] for i in bear_list}
 gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
 
-# --- SIMULATOR / PAPER TRADING LOGIK ---
-# Vi fördelar kassan på topp 3 Bull-aktier baserat på högst score för maximal avkastning
+# --- PAPER TRADING / PORTFÖJ-SIMULATOR ---
 top_alloc_stocks = bull_list[:3]
 alloc_per_stock = fiktiv_kassa / len(top_alloc_stocks) if top_alloc_stocks else 0
 
-st.markdown("""
+st.markdown(f"""
 <div class="sim-box">
     <h3 style="color: #10b981; margin: 0 0 10px 0;">📊 PAPER TRADING & PORTFÖJ-SIMULATOR (100k SEK)</h3>
     <p style="margin: 0; line-height: 1.6;">
-        Denna motor simulerar fördelningen av din fiktiva startkassa på <b>{kassa:,.0f} SEK</b> i de 3 högst rankade Bull-aktierna. 
-        Varje position hålls över en horisont på <b>{days} dagar</b> med automatiskt skydd via ATR-stoploss och vinsthemtagning på optimala targetnivåer.
+        Fördelar din startkassa på <b>{fiktiv_kassa:,.0f} SEK</b> i de 3 högst rankade Bull-aktierna. 
+        Kurserna och kassan uppdateras automatiskt varje timme. Innehavstid: <b>{hold_days} dagar</b>.
     </p>
 </div>
-""".format(kassa=fiktiv_kassa, days=hold_days), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
-# Visa simulerade aktiva positioner
 sim_cols = st.columns(3)
 for idx, stock in enumerate(top_alloc_stocks):
     with sim_cols[idx]:
@@ -175,7 +174,6 @@ for idx, stock in enumerate(top_alloc_stocks):
 
 st.markdown("---")
 
-# --- HUVUDLAYOUT (BULL / BEAR / GASELL) ---
 col_left, col_right = st.columns(2, gap="large")
 
 with col_left:
