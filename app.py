@@ -4,6 +4,7 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import ta
+import plotly.express as px
 from datetime import datetime
 
 st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
@@ -176,16 +177,33 @@ def fetch_argon_v2_data(tickers):
             if 35.0 <= rsi_v <= 56.0: score += 12.0
             argon_score = int(np.clip(score, 10, 99))
 
+            # Skapa snygg dataframe för Plotly
+            hist_df = pd.DataFrame({"Pris": close.tail(20)})
+            hist_df.index = hist_df.index.strftime('%Y-%m-%d')
+
             results.append({
                 "ticker": ticker, "close": c_now, "y_high": y_high, "pct": pct_1d,
                 "rs_alpha": rs_alpha, "valuta": valuta, "rsi": rsi_v, "ema10": ema10,
                 "sma50": sma50, "high_20": high_20, "dip": dip_high, "atr": atr_14,
                 "atr_pct": atr_pct, "rvol": rvol, "volatility": vol_spread,
-                "score": argon_score, "history": close.tail(15)
+                "score": argon_score, "history": hist_df
             })
         except Exception:
             continue
     return results
+
+def plot_cool_chart(hist_df, color_hex, height=110):
+    fig = px.line(hist_df, x=hist_df.index, y="Pris", template="plotly_dark")
+    fig.update_traces(line=dict(color=color_hex, width=2.5), mode="lines")
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(15, 23, 42, 0.6)",
+        margin=dict(l=0, r=0, t=5, b=0),
+        height=height,
+        xaxis=dict(showgrid=False, zeroline=False, color="#94a3b8"),
+        yaxis=dict(showgrid=True, gridcolor="#1e293b", zeroline=False, color="#94a3b8")
+    )
+    return fig
 
 market_data = fetch_argon_v2_data(tickers_list)
 if not market_data:
@@ -221,7 +239,7 @@ with col_left:
             "</div>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
-        st.line_chart(item["history"], height=90)
+        st.plotly_chart(plot_cool_chart(item["history"], "#38bdf8", 100), use_container_width=True, config={"displayModeBar": False})
 
 with col_right:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
@@ -241,7 +259,7 @@ with col_right:
             "</div>"
         )
         st.markdown(bear_html, unsafe_allow_html=True)
-        st.line_chart(item["history"], height=90)
+        st.plotly_chart(plot_cool_chart(item["history"], "#f87171", 100), use_container_width=True, config={"displayModeBar": False})
 
 st.markdown("---")
 gazelle_html = (
@@ -251,4 +269,4 @@ gazelle_html = (
     "</div>"
 )
 st.markdown(gazelle_html, unsafe_allow_html=True)
-st.line_chart(gazelle["history"], height=140)
+st.plotly_chart(plot_cool_chart(gazelle["history"], "#eab308", 150), use_container_width=True, config={"displayModeBar": False})
