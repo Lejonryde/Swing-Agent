@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 import yfinance as yf
 import pandas as pd
@@ -34,7 +35,30 @@ today_str = today_dt.strftime("%Y-%m-%d %H:%M")
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
 fiktiv_kassa = st.sidebar.number_input("Fiktiv Startkassa (SEK):", 10000, 1000000, 100000, 10000)
 risk_pct = st.sidebar.slider("Max risk per affär (%):", 0.5, 3.0, 1.0, 0.25)
-hold_days = st.sidebar.slider("Mål-innehavstid (dagar):", 3, 20, 7, 1)
+hold_days = st.sidebar.slider("Mål-innehavstid (dagar):", 3, 20, 8, 1)
+
+PORTFOLIO_FILE = "paper_portfolio.json"
+
+def load_portfolio(initial_cash):
+    if os.path.exists(PORTFOLIO_FILE):
+        try:
+            with open(PORTFOLIO_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"cash": float(initial_cash), "initial_cash": float(initial_cash), "positions": [], "history": []}
+
+def save_portfolio(data):
+    try:
+        with open(PORTFOLIO_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception:
+        pass
+
+if st.sidebar.button("🔄 Nollställ Paper-Portfölj"):
+    if os.path.exists(PORTFOLIO_FILE):
+        os.remove(PORTFOLIO_FILE)
+    st.rerun()
 
 DEFAULT_TICKERS = "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
 custom_tickers = st.sidebar.text_area("Aktiva tickers:", DEFAULT_TICKERS, height=120)
@@ -43,7 +67,7 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    "<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK // AUTO-REFRESH (1H) // " + today_str + "</div>"
+    "<div class='logo-sub'>LOCKED PAPER TRADING // 100K SEK // AUTO-EVALUATION (1H) // " + today_str + "</div>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -72,6 +96,7 @@ def fetch_argon_v2_data(tickers):
                 continue
             close, high, low = df["Close"], df["High"], df["Low"]
             c_now, c_prev = float(close.iloc[-1]), float(close.iloc[-2])
+            h_today, l_today = float(high.iloc[-1]), float(low.iloc[-1])
             pct_1d = ((c_now - c_prev) / c_prev) * 100
             c_5d = float(close.iloc[-6]) if len(close) >= 6 else c_prev
             pct_5d = ((c_now - c_5d) / c_5d) * 100
@@ -103,9 +128,9 @@ def fetch_argon_v2_data(tickers):
             })
 
             results.append({
-                "ticker": ticker, "close": c_now, "pct": pct_1d, "rs_alpha": rs_alpha,
-                "valuta": valuta, "rsi": rsi_v, "atr": atr_14, "volatility": vol_spread,
-                "score": argon_score, "history": hist_df
+                "ticker": ticker, "close": c_now, "high_today": h_today, "low_today": l_today,
+                "pct": pct_1d, "rs_alpha": rs_alpha, "valuta": valuta, "rsi": rsi_v,
+                "atr": atr_14, "volatility": vol_spread, "score": argon_score, "history": hist_df
             })
         except Exception:
             continue
@@ -128,6 +153,7 @@ if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas.")
     st.stop()
 
+market_map = {item["ticker"]: item for item in market_data}
 sorted_argon = sorted(market_data, key=lambda x: (x["score"], x["rs_alpha"]), reverse=True)
 bull_list = sorted_argon[:10]
 bull_set = {i["ticker"] for i in bull_list}
@@ -135,50 +161,155 @@ bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=
 bear_set = {i["ticker"] for i in bear_list}
 gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
 
-# --- PAPER TRADING / PORTFÖJ-SIMULATOR ---
-top_alloc_stocks = bull_list[:3]
-alloc_per_stock = fiktiv_kassa / len(top_alloc_stocks) if top_alloc_stocks else 0
+# --- LÅST PAPER TRADING MOTOR (UTVÄRDERA -> SÄLJ -> KÖP VID LEDIG PLATS) ---
+portfolio = load_portfolio(fiktiv_kassa)
+active_positions = []
+fx_rate = 10.80  # Ungefärlig växelkurs för USD-aktier vid SEK-allokering
+
+# 1. Utvärdera befintliga låsta positioner (Sälj vid Target, Stop-Loss eller Tidsgräns)
+for pos in portfolio["positions"]:
+    tkr = pos["ticker"]
+    if tkr in market_map:
+        m = market_map[tkr]
+        cur_p = m["close"]
+        h_p = m["high_today"]
+        l_p = m["low_today"]
+    else:
+        cur_p = pos["entry_price"]
+        h_p = cur_p
+        l_p = cur_p
+
+    entry_dt = datetime.strptime(pos["entry_date"], "%Y-%m-%d")
+    days_held = (today_dt - entry_dt).days
+    planned_exit_dt = datetime.strptime(pos["planned_exit"], "%Y-%m-%d")
+
+    sell_reason = None
+    exit_price = cur_p
+
+    if l_p <= pos["stop"]:
+        sell_reason = "🛑 STOP-LOSS NÅDD"
+        exit_price = pos["stop"]
+    elif h_p >= pos["target"]:
+        sell_reason = "🎯 TARGET NÅDD (VINSTHEMTAKNING)"
+        exit_price = pos["target"]
+    elif today_dt >= planned_exit_dt or days_held >= hold_days:
+        sell_reason = "⏰ TIDSGRÄNS (" + str(hold_days) + " DAGAR)"
+        exit_price = cur_p
+
+    if sell_reason:
+        roi_pct = ((exit_price - pos["entry_price"]) / pos["entry_price"]) * 100.0
+        returned_sek = pos["allocated_sek"] * (1.0 + (roi_pct / 100.0))
+        profit_sek = returned_sek - pos["allocated_sek"]
+        portfolio["cash"] += returned_sek
+        portfolio["history"].append({
+            "Ticker": tkr,
+            "Entry-datum": pos["entry_date"],
+            "Exit-datum": today_dt.strftime("%Y-%m-%d"),
+            "Entrykurs": round(pos["entry_price"], 2),
+            "Exitkurs": round(exit_price, 2),
+            "Avkastning (%)": round(roi_pct, 2),
+            "Resultat (SEK)": round(profit_sek, 0),
+            "Orsak": sell_reason
+        })
+    else:
+        pos["current_price"] = cur_p
+        pos["days_held"] = days_held
+        active_positions.append(pos)
+
+portfolio["positions"] = active_positions
+
+# 2. Köp bara in nya aktier om det finns färre än 3 aktiva positioner
+open_slots = 3 - len(portfolio["positions"])
+if open_slots > 0 and portfolio["cash"] > 1000:
+    held_tickers = {p["ticker"] for p in portfolio["positions"]}
+    candidates = [b for b in bull_list if b["ticker"] not in held_tickers]
+    for cand in candidates[:open_slots]:
+        alloc_sek = portfolio["cash"] / open_slots
+        c_price = cand["close"]
+        c_atr = cand["atr"]
+        t_target = c_price + max(3.2 * c_atr, c_price * 0.085)
+        t_stop = c_price - max(1.6 * c_atr, c_price * 0.035)
+        conv = fx_rate if cand["valuta"] == "USD" else 1.0
+        shares = int((alloc_sek / conv) / c_price) if c_price > 0 else 1
+
+        new_pos = {
+            "ticker": cand["ticker"],
+            "valuta": cand["valuta"],
+            "entry_price": c_price,
+            "current_price": c_price,
+            "target": t_target,
+            "stop": t_stop,
+            "shares": shares,
+            "allocated_sek": alloc_sek,
+            "entry_date": today_dt.strftime("%Y-%m-%d"),
+            "planned_exit": (today_dt + timedelta(days=hold_days)).strftime("%Y-%m-%d"),
+            "days_held": 0
+        }
+        portfolio["positions"].append(new_pos)
+        portfolio["cash"] -= alloc_sek
+        open_slots -= 1
+
+save_portfolio(portfolio)
+
+# 3. Beräkna totalt portföljvärde och total avkastning
+active_value_sek = 0.0
+for p in portfolio["positions"]:
+    p_roi = ((p["current_price"] - p["entry_price"]) / p["entry_price"])
+    active_value_sek += p["allocated_sek"] * (1.0 + p_roi)
+
+total_portfolio_sek = portfolio["cash"] + active_value_sek
+base_cash = portfolio.get("initial_cash", fiktiv_kassa)
+total_roi_pct = ((total_portfolio_sek - base_cash) / base_cash) * 100.0
+tot_color = "#10b981" if total_roi_pct >= 0 else "#ef4444"
 
 st.markdown(
     "<div class='sim-box'>"
-    "<h3 style='color: #10b981; margin: 0 0 10px 0;'>📊 PAPER TRADING & PORTFÖJ-SIMULATOR</h3>"
+    "<h3 style='color: #10b981; margin: 0 0 10px 0;'>📊 LÅST PAPER TRADING & PORTFÖJ-SIMULATOR</h3>"
     "<p style='margin: 0; line-height: 1.6;'>"
-    "Fördelar din startkassa på <b>" + f"{fiktiv_kassa:,.0f}" + " SEK</b> i de 3 högst rankade Bull-aktierna. "
-    "Innehavstid: <b>" + str(hold_days) + " dagar</b> med automatisk timuppdatering."
+    "<b>Totalt Portföljvärde:</b> " + f"{total_portfolio_sek:,.0f}" + " SEK "
+    "(<span style='color: " + tot_color + "; font-weight: bold;'>" + f"{total_roi_pct:+.2f}%" + "</span>) | "
+    "<b>Fri Kassa:</b> " + f"{portfolio['cash']:,.0f}" + " SEK | "
+    "<b>Låsta Innehav:</b> " + str(len(portfolio["positions"])) + "/3 st | "
+    "<b>Regel:</b> Positioner hålls låsta tills Target, Stop-Loss eller Exit-datum nås."
     "</p>"
     "</div>",
     unsafe_allow_html=True
 )
 
 sim_cols = st.columns(3)
-for idx, stock in enumerate(top_alloc_stocks):
+for idx, pos in enumerate(portfolio["positions"]):
     with sim_cols[idx]:
-        s_entry = stock["close"] - (0.35 * stock["atr"])
-        s_target = s_entry + (3.2 * stock["atr"])
-        s_stop = s_entry - (1.6 * stock["atr"])
-        shares_sim = int(alloc_per_stock / s_entry) if s_entry > 0 else 0
-        
-        entry_date_str = today_dt.strftime("%Y-%m-%d")
-        exit_date_dt = today_dt + timedelta(days=hold_days)
-        exit_date_str = exit_date_dt.strftime("%Y-%m-%d")
-        
-        pct_since_entry = ((stock["close"] - s_entry) / s_entry) * 100
-        roi_color = "#10b981" if pct_since_entry >= 0 else "#ef4444"
+        cur_p = pos["current_price"]
+        ent_p = pos["entry_price"]
+        pct_dev = ((cur_p - ent_p) / ent_p) * 100.0
+        cur_val_sek = pos["allocated_sek"] * (1.0 + (pct_dev / 100.0))
+        roi_col = "#10b981" if pct_dev >= 0 else "#ef4444"
+
+        dist_target = ((pos["target"] - cur_p) / cur_p) * 100.0
+        dist_stop = ((cur_p - pos["stop"]) / cur_p) * 100.0
 
         card_text = (
             "<div class='stock-card' style='border-color: #10b981;'>"
-            "<span class='argon-badge' style='background: #10b981; color: #000;'>POSITION #" + str(idx+1) + "</span>"
-            "<h4 style='margin: 0; color: #34d399;'>⚡ " + stock['ticker'] + "</h4>"
-            "<p style='margin: 4px 0; font-size: 0.85rem;'>Allokerat: <b>" + f"{alloc_per_stock:,.0f}" + " " + stock['valuta'] + "</b> (" + str(shares_sim) + " st)</p>"
+            "<span class='argon-badge' style='background: #10b981; color: #000;'>🔒 LÅST POS #" + str(idx+1) + "</span>"
+            "<h4 style='margin: 0; color: #34d399;'>⚡ " + pos["ticker"] + "</h4>"
+            "<p style='margin: 4px 0; font-size: 0.85rem;'>Värde nu: <b>" + f"{cur_val_sek:,.0f}" + " SEK</b> (" + str(pos["shares"]) + " st)</p>"
             "<hr style='border-color: #1e293b; margin: 6px 0;'>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entry-datum:</b> " + entry_date_str + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Planerad Exit:</b> " + exit_date_str + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entrykurs:</b> " + f"{s_entry:.2f}" + " " + stock['valuta'] + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Utveckling:</b> <span style='color: " + roi_color + "; font-weight: bold;'>" + f"{pct_since_entry:+.2f}%</span></p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{s_target:.2f}" + " | <b>Stop:</b> " + f"{s_stop:.2f}" + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Status:</b> <span style='color: #38bdf8; font-weight: bold;'>BEHÅLL (Dag " + str(pos["days_held"]) + "/" + str(hold_days) + ")</span></p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entry-datum:</b> " + pos["entry_date"] + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Planerad Exit:</b> " + pos["planned_exit"] + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entrykurs:</b> " + f"{ent_p:.2f}" + " " + pos["valuta"] + " | <b>Nu:</b> " + f"{cur_p:.2f}" + "</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Utveckling sedan entry:</b> <span style='color: " + roi_col + "; font-weight: bold;'>" + f"{pct_dev:+.2f}%</span></p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{pos['target']:.2f}" + " (+" + f"{dist_target:.1f}" + "%) | <b>Stop:</b> " + f"{pos['stop']:.2f}" + " (-" + f"{dist_stop:.1f}" + "%)</p>"
             "</div>"
         )
         st.markdown(card_text, unsafe_allow_html=True)
+
+with st.expander("📜 Visa Avslutade Affärer & Loggbok (" + str(len(portfolio["history"])) + " st)"):
+    if portfolio["history"]:
+        hist_table = pd.DataFrame(portfolio["history"])
+        st.dataframe(hist_table, use_container_width=True)
+    else:
+        st.info("Inga affärer har avslutats ännu. Motorn utvärderar dina 3 låsta positioner varje timme och säljer först när Target, Stop-Loss eller Planerad Exit nås.")
 
 st.markdown("---")
 
