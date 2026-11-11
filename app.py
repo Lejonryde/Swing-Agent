@@ -4,10 +4,10 @@ import yfinance as yf
 import pandas as pd
 import numpy as np
 import ta
-import plotly.express as px
+import altair as alt
 from datetime import datetime, timedelta
 
-st.set_page_config(page_title="SWINGKINGS // ARGON v2.0 - Paper Trading", page_icon="👑", layout="wide")
+st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
 
 CSS_STYLE = """
 <style>
@@ -31,7 +31,6 @@ st.markdown(CSS_STYLE, unsafe_allow_html=True)
 today_dt = datetime.now()
 today_str = today_dt.strftime("%Y-%m-%d %H:%M")
 
-# --- SIDOMENY & PORTFÖJLINSTÄLLNINGAR ---
 st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
 fiktiv_kassa = st.sidebar.number_input("Fiktiv Startkassa (SEK):", 10000, 1000000, 100000, 10000)
 risk_pct = st.sidebar.slider("Max risk per affär (%):", 0.5, 3.0, 1.0, 0.25)
@@ -44,7 +43,7 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    f"<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK PORTFOLIO // VCP SQUEEZE // {today_str}</div>"
+    "<div class='logo-sub'>PAPER TRADING ENGINE // 100K SEK // AUTO-REFRESH (1H) // " + today_str + "</div>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -112,37 +111,7 @@ def fetch_argon_v2_data(tickers):
             continue
     return results
 
-def plot_plotly_chart(hist_df, color_hex, height=110):
-    fig = px.line(hist_df, x="Datum", y="Pris", template="plotly_dark")
-    fig.update_traces(line=dict(color=color_hex, width=2.5), mode="lines")
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(15, 23, 42, 0.6)",
-        margin=dict(l=0, r=0, t=5, b=0),
-        height=height,
-        xaxis=dict(showgrid=False, zeroline=False, color="#94a3b8"),
-        yaxis=dict(showgrid=True, gridcolor="#1e293b", zeroline=False, color="#94a3b8")
-    )
-    return fig
-
-market_data = fetch_argon_v2_data(tickers_list)
-if not market_data:
-    st.warning("Ingen marknadsdata kunde hämtas.")
-    st.stop()
-
-sorted_argon = sorted(market_data, key=lambda x: (x["score"], x["rs_alpha"]), reverse=True)
-bull_list = sorted_argon[:10]
-bull_set = {i["ticker"] for i in bull_list}
-bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=lambda x: (x["score"], x["rs_alpha"]))[:10]
-bear_set = {i["ticker"] for i in bear_list}
-gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
-
-# --- PAPER TRADING / PORTFÖJ-SIMULATOR ---
-top_alloc_stocks = bull_list[:3]
-alloc_per_stock = fiktiv_kassa / len(top_alloc_stocks) if top_alloc_stocks else 0
-
-st.markdown(f"""
-<div class="sim-box">
-    <h3 style="color: #10b981; margin: 0 0 10px 0;">📊 PAPER TRADING & PORTFÖJ-SIMULATOR (100k SEK)</h3>
-    <p style="margin: 0; line-height: 1.6;">
-        Fördelar din startkassa på <b>{fiktiv_kassa:,.0f}
+def plot_neon_chart(hist_df, color_hex, height=120):
+    return (
+        alt.Chart(hist_df)
+        .mark_area(line={"color": color_hex, "strokeWidth": 2.5}, color=color
