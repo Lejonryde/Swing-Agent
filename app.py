@@ -193,13 +193,19 @@ fx_rate = 10.80
 
 for pos in portfolio["positions"]:
     tkr = pos["ticker"]
+    ent_p = float(pos["entry_price"])
+
+    # Tvinga ned eventuella gamla överhöga Target/Stop-nivåer på befintliga positioner
+    pos["target"] = min(max(float(pos["target"]), ent_p * 1.065), ent_p * 1.10)
+    pos["stop"] = max(min(float(pos["stop"]), ent_p * 0.97), ent_p * 0.955)
+
     if tkr in market_map:
         m = market_map[tkr]
         cur_p = m["close"]
         h_p = m["high_today"]
         l_p = m["low_today"]
     else:
-        cur_p = pos["entry_price"]
+        cur_p = ent_p
         h_p = cur_p
         l_p = cur_p
 
@@ -221,7 +227,7 @@ for pos in portfolio["positions"]:
         exit_price = cur_p
 
     if sell_reason:
-        roi_pct = ((exit_price - pos["entry_price"]) / pos["entry_price"]) * 100.0
+        roi_pct = ((exit_price - ent_p) / ent_p) * 100.0
         returned_sek = pos["allocated_sek"] * (1.0 + (roi_pct / 100.0))
         profit_sek = returned_sek - pos["allocated_sek"]
         portfolio["cash"] += returned_sek
@@ -229,7 +235,7 @@ for pos in portfolio["positions"]:
             "Ticker": tkr,
             "Entry-datum": pos["entry_date"],
             "Exit-datum": today_dt.strftime("%Y-%m-%d"),
-            "Entrykurs": round(pos["entry_price"], 2),
+            "Entrykurs": round(ent_p, 2),
             "Exitkurs": round(exit_price, 2),
             "Avkastning (%)": round(roi_pct, 2),
             "Resultat (SEK)": round(profit_sek, 0),
@@ -298,98 +304,3 @@ st.markdown(
 
 sim_cols = st.columns(3)
 for idx, pos in enumerate(portfolio["positions"]):
-    with sim_cols[idx]:
-        cur_p = pos["current_price"]
-        ent_p = pos["entry_price"]
-        pct_dev = ((cur_p - ent_p) / ent_p) * 100.0
-        cur_val_sek = pos["allocated_sek"] * (1.0 + (pct_dev / 100.0))
-        roi_col = "#10b981" if pct_dev >= 0 else "#ef4444"
-
-        dist_target = ((pos["target"] - cur_p) / cur_p) * 100.0
-        dist_stop = ((cur_p - pos["stop"]) / cur_p) * 100.0
-
-        card_text = (
-            "<div class='stock-card' style='border-color: #10b981;'>"
-            "<span class='argon-badge' style='background: #10b981; color: #000;'>🔒 LÅST POS #" + str(idx+1) + "</span>"
-            "<h4 style='margin: 0; color: #34d399;'>⚡ " + pos["ticker"] + "</h4>"
-            "<p style='margin: 4px 0; font-size: 0.85rem;'>Värde nu: <b>" + f"{cur_val_sek:,.0f}" + " SEK</b> (" + str(pos["shares"]) + " st)</p>"
-            "<hr style='border-color: #1e293b; margin: 6px 0;'>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Status:</b> <span style='color: #38bdf8; font-weight: bold;'>BEHÅLL (Dag " + str(pos["days_held"]) + "/" + str(hold_days) + ")</span></p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entry-datum:</b> " + pos["entry_date"] + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Planerad Exit:</b> " + pos["planned_exit"] + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entrykurs:</b> " + f"{ent_p:.2f}" + " " + pos["valuta"] + " | <b>Nu:</b> " + f"{cur_p:.2f}" + "</p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Utveckling sedan entry:</b> <span style='color: " + roi_col + "; font-weight: bold;'>" + f"{pct_dev:+.2f}%</span></p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{pos['target']:.2f}" + " (+" + f"{dist_target:.1f}" + "%) | <b>Stop:</b> " + f"{pos['stop']:.2f}" + " (-" + f"{dist_stop:.1f}" + "%)</p>"
-            "</div>"
-        )
-        st.markdown(card_text, unsafe_allow_html=True)
-
-with st.expander("📜 Visa Avslutade Affärer & Loggbok (" + str(len(portfolio["history"])) + " st)"):
-    if portfolio["history"]:
-        hist_table = pd.DataFrame(portfolio["history"])
-        st.dataframe(hist_table, use_container_width=True)
-    else:
-        st.info("Inga affärer har avslutats ännu. Motorn utvärderar dina 3 låsta positioner varje timme och säljer först när Target, Stop-Loss eller Planerad Exit nås.")
-
-st.markdown("---")
-
-col_left, col_right = st.columns(2, gap="large")
-
-with col_left:
-    st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bull_list:
-        entry_p = item["close"] - (0.35 * item["atr"])
-        target_p, stop_p = calc_capped_levels(entry_p, item["atr"])
-        shares = safe_shares(fiktiv_kassa, risk_pct, entry_p, stop_p)
-        card_html = (
-            "<div class='stock-card'>"
-            "<span class='argon-badge'>SCORE: " + str(item['score']) + "</span>"
-            "<h3 style='margin: 0; color: #38bdf8;'>⚡ " + item['ticker'] + "</h3>"
-            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='report-box'>"
-            "• <b>Entry:</b> " + f"{entry_p:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{target_p:.2f}" + " | <b>Stop:</b> " + f"{stop_p:.2f}" + "<br>"
-            "• <b>Positionsstorlek:</b> <b>" + str(shares) + " st aktier</b>"
-            "</div>"
-        )
-        st.markdown(card_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_plotly_chart(item["history"], "#38bdf8", "rgba(56, 189, 248, 0.15)", 110), use_container_width=True, config={"displayModeBar": False})
-
-with col_right:
-    st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
-    for item in bear_list:
-        s_entry = item["close"] + (0.35 * item["atr"])
-        s_stop = min(max(s_entry + (1.4 * item["atr"]), s_entry * 1.03), s_entry * 1.045)
-        s_target = max(min(s_entry - (2.5 * item["atr"]), s_entry * 0.935), s_entry * 0.90)
-        bear_html = (
-            "<div class='stock-card'>"
-            "<span class='bear-badge'>SCORE: " + str(item['score']) + "</span>"
-            "<h3 style='margin: 0; color: #f87171;'>💀 " + item['ticker'] + "</h3>"
-            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
-            "</div>"
-            "<div class='bear-report-box'>"
-            "• <b>Short Entry:</b> " + f"{s_entry:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{s_target:.2f}" + " | <b>Stop:</b> " + f"{s_stop:.2f}"
-            "</div>"
-        )
-        st.markdown(bear_html, unsafe_allow_html=True)
-        st.plotly_chart(plot_plotly_chart(item["history"], "#f87171", "rgba(248, 113, 113, 0.15)", 110), use_container_width=True, config={"displayModeBar": False})
-
-st.markdown("---")
-g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
-g_target, g_stop = calc_capped_levels(g_entry, gazelle["atr"])
-g_shares = safe_shares(fiktiv_kassa, risk_pct, g_entry, g_stop)
-
-gazelle_html = (
-    "<div class='gazelle-box'>"
-    "<span class='gazelle-badge'>SCORE: " + str(gazelle['score']) + " | 20D SPREAD: " + f"{gazelle['volatility']:.1f}" + "%</span>"
-    "<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: " + gazelle['ticker'] + "</h2>"
-    "<p style='margin: 8px 0;'><b>Slutkurs:</b> " + f"{gazelle['close']:.2f}" + " " + gazelle['valuta'] + " (" + f"{gazelle['pct']:+.2f}" + "%) | <b>RS-Alpha:</b> " + f"{gazelle['rs_alpha']:+.1f}" + "% | <b>RSI:</b> " + f"{gazelle['rsi']:.1f}" + "</p>"
-    "<div style='border-top: 1px solid #334155; padding-top: 10px; margin-top: 8px;'>"
-    "• <b>Entry (Köpzon):</b> " + f"{g_entry:.2f}" + " " + gazelle['valuta'] + " | <b>Target:</b> " + f"{g_target:.2f}" + " | <b>Stop-Loss:</b> " + f"{g_stop:.2f}" + "<br>"
-    "• <b>Rekommenderad Positionsstorlek:</b> <b>" + str(g_shares) + " st aktier</b> (vid " + str(risk_pct) + "% portföljrisk)"
-    "</div>"
-    "</div>"
-)
-st.markdown(gazelle_html, unsafe_allow_html=True)
-st.plotly_chart(plot_plotly_chart(gazelle["history"], "#eab308", "rgba(234, 179, 8, 0.18)", 160), use_container_width=True, config={"displayModeBar": False})
-# === SLUT PÅ FILEN ===
