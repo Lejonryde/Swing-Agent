@@ -58,8 +58,14 @@ def save_portfolio(data):
 def clear_history_and_reset_cash(p_data, target_cash):
     p_data["history"] = []
     p_data["initial_cash"] = float(target_cash)
-    bound_sek = sum(float(p.get("allocated_sek", 0.0)) for p in p_data.get("positions", []))
-    p_data["cash"] = max(float(target_cash) - bound_sek, 0.0)
+    positions = p_data.get("positions", [])
+    if positions:
+        equal_alloc = float(target_cash) / 3.0
+        for p in positions:
+            p["allocated_sek"] = equal_alloc
+        p_data["cash"] = max(float(target_cash) - (equal_alloc * len(positions)), 0.0)
+    else:
+        p_data["cash"] = float(target_cash)
     save_portfolio(p_data)
 
 if st.sidebar.button("🔄 Nollställ Paper-Portfölj", key="sb_reset_all"):
