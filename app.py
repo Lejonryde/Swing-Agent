@@ -10,24 +10,24 @@ from datetime import datetime, timedelta
 
 st.set_page_config(page_title="SWINGKINGS // ARGON v2.0", page_icon="👑", layout="wide")
 
-CSS_STYLE = """
-<style>
-html, body, [data-testid="stAppViewContainer"] { background: linear-gradient(135deg, #05070b, #0a0e17, #0f172a) !important; color: #e2e8f0 !important; background-attachment: fixed; }
-[data-testid="stSidebar"] { background-color: #090d14 !important; border-right: 1px solid #1e293b !important; }
-.logo-header-box { background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; box-shadow: 0 0 35px rgba(56, 189, 248, 0.25); border-radius: 16px; padding: 24px; margin-bottom: 25px; text-align: center; }
-.logo-title { font-size: 2.8rem; font-weight: 900; letter-spacing: 3px; background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; }
-.logo-sub { color: #94a3b8; font-size: 0.88rem; letter-spacing: 2px; margin-top: 8px; text-transform: uppercase; }
-.stock-card { background: rgba(17, 24, 39, 0.92); border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 10px; }
-.argon-badge { background: linear-gradient(90deg, #0284c7, #2563eb); color: #ffffff; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; float: right; }
-.bear-badge { background: linear-gradient(90deg, #dc2626, #991b1b); color: #ffffff; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; float: right; }
-.gazelle-badge { background: linear-gradient(90deg, #eab308, #ca8a04); color: #000000; padding: 4px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 800; float: right; }
-.report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #38bdf8; border-left: 5px solid #38bdf8; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }
-.bear-report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #ef4444; border-left: 5px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }
-.gazelle-box { background: rgba(15, 23, 42, 0.96); border: 2px solid #eab308; box-shadow: 0 0 25px rgba(234, 179, 8, 0.25); border-radius: 14px; padding: 22px; margin: 30px 0 15px 0; line-height: 1.6; }
-.sim-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #10b981; border-left: 5px solid #10b981; border-radius: 10px; padding: 18px; margin-bottom: 20px; }
-</style>
-"""
-st.markdown(CSS_STYLE, unsafe_allow_html=True)
+CSS_LINES = [
+    "<style>",
+    "html, body, [data-testid='stAppViewContainer'] { background: linear-gradient(135deg, #05070b, #0a0e17, #0f172a) !important; color: #e2e8f0 !important; background-attachment: fixed; }",
+    "[data-testid='stSidebar'] { background-color: #090d14 !important; border-right: 1px solid #1e293b !important; }",
+    ".logo-header-box { background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; box-shadow: 0 0 35px rgba(56, 189, 248, 0.25); border-radius: 16px; padding: 24px; margin-bottom: 25px; text-align: center; }",
+    ".logo-title { font-size: 2.8rem; font-weight: 900; letter-spacing: 3px; background: linear-gradient(90deg, #38bdf8, #a855f7, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; }",
+    ".logo-sub { color: #94a3b8; font-size: 0.88rem; letter-spacing: 2px; margin-top: 8px; text-transform: uppercase; }",
+    ".stock-card { background: rgba(17, 24, 39, 0.92); border: 1px solid #334155; border-radius: 12px; padding: 15px; margin-bottom: 10px; }",
+    ".argon-badge { background: linear-gradient(90deg, #0284c7, #2563eb); color: #ffffff; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; float: right; }",
+    ".bear-badge { background: linear-gradient(90deg, #dc2626, #991b1b); color: #ffffff; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 700; float: right; }",
+    ".gazelle-badge { background: linear-gradient(90deg, #eab308, #ca8a04); color: #000000; padding: 4px 12px; border-radius: 6px; font-size: 0.82rem; font-weight: 800; float: right; }",
+    ".report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #38bdf8; border-left: 5px solid #38bdf8; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }",
+    ".bear-report-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #ef4444; border-left: 5px solid #ef4444; border-radius: 8px; padding: 12px 16px; margin: 6px 0 12px 0; font-size: 0.88rem; line-height: 1.55; }",
+    ".gazelle-box { background: rgba(15, 23, 42, 0.96); border: 2px solid #eab308; box-shadow: 0 0 25px rgba(234, 179, 8, 0.25); border-radius: 14px; padding: 22px; margin: 30px 0 15px 0; line-height: 1.6; }",
+    ".sim-box { background: rgba(15, 23, 42, 0.94); border: 1px solid #10b981; border-left: 5px solid #10b981; border-radius: 10px; padding: 18px; margin-bottom: 20px; }",
+    "</style>"
+]
+st.markdown("\n".join(CSS_LINES), unsafe_allow_html=True)
 
 today_dt = datetime.now()
 today_str = today_dt.strftime("%Y-%m-%d %H:%M")
@@ -67,7 +67,7 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    "<div class='logo-sub'>LOCKED PAPER TRADING // 100K SEK // AUTO-EVALUATION (1H) // " + today_str + "</div>"
+    "<div class='logo-sub'>LOCKED PAPER TRADING // MAX 10% TARGET // AUTO-EVALUATION (1H) // " + today_str + "</div>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -151,6 +151,15 @@ def plot_plotly_chart(hist_df, color_hex, fill_rgba, height=110):
     )
     return fig
 
+def calc_capped_levels(price, atr):
+    # Target: +6.5% till max +10.0%
+    raw_target = price + (2.5 * atr)
+    target = min(max(raw_target, price * 1.065), price * 1.10)
+    # Stop-Loss: -3.0% till max -4.5%
+    raw_stop = price - (1.4 * atr)
+    stop = max(min(raw_stop, price * 0.97), price * 0.955)
+    return target, stop
+
 market_data = fetch_argon_v2_data(tickers_list)
 if not market_data:
     st.warning("Ingen marknadsdata kunde hämtas.")
@@ -164,7 +173,6 @@ bear_list = sorted([d for d in market_data if d["ticker"] not in bull_set], key=
 bear_set = {i["ticker"] for i in bear_list}
 gazelle = max([d for d in market_data if d["ticker"] not in bull_set and d["ticker"] not in bear_set] or market_data, key=lambda x: x["volatility"])
 
-# --- LÅST PAPER TRADING MOTOR (UTVÄRDERA -> SÄLJ -> KÖP VID LEDIG PLATS) ---
 portfolio = load_portfolio(fiktiv_kassa)
 active_positions = []
 fx_rate = 10.80
@@ -227,9 +235,7 @@ if open_slots > 0 and portfolio["cash"] > 1000:
     for cand in candidates[:open_slots]:
         alloc_sek = portfolio["cash"] / open_slots
         c_price = cand["close"]
-        c_atr = cand["atr"]
-        t_target = c_price + max(3.2 * c_atr, c_price * 0.085)
-        t_stop = c_price - max(1.6 * c_atr, c_price * 0.035)
+        t_target, t_stop = calc_capped_levels(c_price, cand["atr"])
         conv = fx_rate if cand["valuta"] == "USD" else 1.0
         shares = int((alloc_sek / conv) / c_price) if c_price > 0 else 1
 
@@ -270,7 +276,7 @@ st.markdown(
     "(<span style='color: " + tot_color + "; font-weight: bold;'>" + f"{total_roi_pct:+.2f}%" + "</span>) | "
     "<b>Fri Kassa:</b> " + f"{portfolio['cash']:,.0f}" + " SEK | "
     "<b>Låsta Innehav:</b> " + str(len(portfolio["positions"])) + "/3 st | "
-    "<b>Regel:</b> Positioner hålls låsta tills Target, Stop-Loss eller Exit-datum nås."
+    "<b>Regel:</b> Target begränsad till +6,5% till +10,0% (Stop -3,0% till -4,5%)."
     "</p>"
     "</div>",
     unsafe_allow_html=True
@@ -319,8 +325,7 @@ with col_left:
     st.markdown("<h2 style='color: #0284c7; margin: 0;'>🔵 BULL DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
     for item in bull_list:
         entry_p = item["close"] - (0.35 * item["atr"])
-        stop_p = entry_p - max(1.6 * item["atr"], entry_p * 0.035)
-        target_p = entry_p + max(3.2 * item["atr"], entry_p * 0.085)
+        target_p, stop_p = calc_capped_levels(entry_p, item["atr"])
         shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
         card_html = (
             "<div class='stock-card'>"
@@ -340,8 +345,8 @@ with col_right:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
     for item in bear_list:
         s_entry = item["close"] + (0.35 * item["atr"])
-        s_stop = s_entry + max(1.5 * item["atr"], s_entry * 0.035)
-        s_target = s_entry - max(2.8 * item["atr"], s_entry * 0.08)
+        s_stop = min(max(s_entry + (1.4 * item["atr"]), s_entry * 1.03), s_entry * 1.045)
+        s_target = max(min(s_entry - (2.5 * item["atr"]), s_entry * 0.935), s_entry * 0.90)
         bear_html = (
             "<div class='stock-card'>"
             "<span class='bear-badge'>SCORE: " + str(item['score']) + "</span>"
@@ -357,8 +362,7 @@ with col_right:
 
 st.markdown("---")
 g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
-g_stop = g_entry - max(1.6 * gazelle["atr"], g_entry * 0.04)
-g_target = g_entry + max(3.5 * gazelle["atr"], g_entry * 0.10)
+g_target, g_stop = calc_capped_levels(g_entry, gazelle["atr"])
 g_shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
 
 gazelle_html = (
@@ -374,3 +378,4 @@ gazelle_html = (
 )
 st.markdown(gazelle_html, unsafe_allow_html=True)
 st.plotly_chart(plot_plotly_chart(gazelle["history"], "#eab308", "rgba(234, 179, 8, 0.18)", 160), use_container_width=True, config={"displayModeBar": False})
+# === SLUT PÅ FILEN ===
