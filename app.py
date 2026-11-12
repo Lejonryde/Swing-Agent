@@ -59,6 +59,12 @@ if st.sidebar.button("🔄 Nollställ Paper-Portfölj"):
     if os.path.exists(PORTFOLIO_FILE):
         os.remove(PORTFOLIO_FILE)
     st.rerun()
+   
+if st.sidebar.button("🧹 Rensa enbart historik"):
+    p_temp = load_portfolio(fiktiv_kassa)
+    p_temp["history"] = []
+    save_portfolio(p_temp)
+    st.rerun()
 
 DEFAULT_TICKERS = "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
 custom_tickers = st.sidebar.text_area("Aktiva tickers:", DEFAULT_TICKERS, height=120)
