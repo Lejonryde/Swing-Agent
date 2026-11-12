@@ -55,15 +55,21 @@ def save_portfolio(data):
     except Exception:
         pass
 
+def clear_history_and_reset_cash(p_data, target_cash):
+    p_data["history"] = []
+    p_data["initial_cash"] = float(target_cash)
+    bound_sek = sum(float(p.get("allocated_sek", 0.0)) for p in p_data.get("positions", []))
+    p_data["cash"] = max(float(target_cash) - bound_sek, 0.0)
+    save_portfolio(p_data)
+
 if st.sidebar.button("🔄 Nollställ Paper-Portfölj", key="sb_reset_all"):
     if os.path.exists(PORTFOLIO_FILE):
         os.remove(PORTFOLIO_FILE)
     st.rerun()
 
-if st.sidebar.button("🧹 Rensa enbart historik", key="sb_clear_hist"):
+if st.sidebar.button("🧹 Rensa historik & återställ kassa", key="sb_clear_hist"):
     p_temp = load_portfolio(fiktiv_kassa)
-    p_temp["history"] = []
-    save_portfolio(p_temp)
+    clear_history_and_reset_cash(p_temp, fiktiv_kassa)
     st.rerun()
 
 DEFAULT_TICKERS = "VOLV-B.ST, SAAB-B.ST, MYCR.ST, BONE.ST, CAMX.ST, ATCO-A.ST, ABB.ST, SAND.ST, HEXA-B.ST, EVOL.ST, BOL.ST, SSAB-B.ST, FNOX.ST, NIBE-B.ST, EMBRAC-B.ST, SINCH.ST, SBB-B.ST, ERIC-B.ST, HM-B.ST, GETI-B.ST, INVE-B.ST, SEB-A.ST, TELIA.ST, NVDA, AMD, PLTR, TSLA, SMCI, CRWD, ARM, AAPL, MSFT"
@@ -342,9 +348,8 @@ with st.expander("📜 Visa Avslutade Affärer & Loggbok (" + str(len(portfolio[
     if portfolio["history"]:
         hist_table = pd.DataFrame(portfolio["history"])
         st.dataframe(hist_table, use_container_width=True)
-        if st.button("🧹 Töm Loggbok", key="main_clear_hist"):
-            portfolio["history"] = []
-            save_portfolio(portfolio)
+        if st.button("🧹 Töm Loggbok & återställ kassa", key="main_clear_hist"):
+            clear_history_and_reset_cash(portfolio, fiktiv_kassa)
             st.rerun()
     else:
         st.info("Inga affärer har avslutats ännu. Motorn utvärderar dina 3 låsta positioner varje timme och säljer först när Target, Stop-Loss eller Planerad Exit nås.")
