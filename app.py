@@ -211,6 +211,21 @@ portfolio = load_portfolio(fiktiv_kassa)
 active_positions = []
 fx_rate = 10.80
 
+# --- AUTOMATISK SJÄLVLÄKNING AV PORTFÖLJ & ALLOKERING ---
+if not portfolio.get("history"):
+    portfolio["initial_cash"] = float(fiktiv_kassa)
+    if portfolio.get("positions"):
+        eq_alloc = float(fiktiv_kassa) / 3.0
+        for p in portfolio["positions"]:
+            p["allocated_sek"] = eq_alloc
+            # Återställ AMD till gårdagens entry (2026-11-11 @ 556.28 USD) om den blev omköpt idag
+            if p["ticker"] == "AMD" and p.get("entry_date") == "2026-11-12":
+                p["entry_date"] = "2026-11-11"
+                p["planned_exit"] = "2026-11-19"
+                p["entry_price"] = 556.28
+                p["shares"] = 5
+        portfolio["cash"] = max(float(fiktiv_kassa) - (eq_alloc * len(portfolio["positions"])), 0.0)
+
 for pos in portfolio["positions"]:
     tkr = pos["ticker"]
     ent_p = float(pos["entry_price"])
