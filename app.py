@@ -36,6 +36,7 @@ st.sidebar.header("🕹️ ARGON v2.0 CONTROL")
 fiktiv_kassa = st.sidebar.number_input("Fiktiv Startkassa (SEK):", 10000, 1000000, 100000, 10000)
 risk_pct = st.sidebar.slider("Max risk per affär (%):", 0.5, 3.0, 1.0, 0.25)
 hold_days = st.sidebar.slider("Mål-innehavstid (dagar):", 3, 20, 8, 1)
+min_rv = st.sidebar.slider("Min R/V-golv (1.0 = 4.5% daglig ATR):", 0.30, 1.30, 0.65, 0.05)
 
 PORTFOLIO_FILE = "paper_portfolio.json"
 
@@ -85,7 +86,7 @@ tickers_list = [t.strip() for t in custom_tickers.replace("\n", ",").split(",") 
 st.markdown(
     "<div class='logo-header-box'>"
     "<h1 class='logo-title'>👑 SWINGKINGS // ARGON v2.0</h1>"
-    "<div class='logo-sub'>LOCKED PAPER TRADING // MAX 10% TARGET // AUTO-EVALUATION (1H) // " + today_str + "</div>"
+    "<div class='logo-sub'>LOCKED PAPER TRADING // DYNAMIC R/V TARGETS // AUTO-EVALUATION (1H) // " + today_str + "</div>"
     "</div>",
     unsafe_allow_html=True
 )
@@ -136,6 +137,10 @@ def fetch_argon_v2_data(tickers):
             atr_raw = float(tr.tail(14).mean())
             atr_14 = atr_raw if (not np.isnan(atr_raw) and atr_raw > 0) else (c_now * 0.025)
 
+            # --- R/V & ATR% BERÄKNING (1.0 R/V = 4.5% daglig ATR) ---
+            atr_pct = (atr_14 / c_now) * 100.0
+            rv_ratio = atr_pct / 4.5
+
             dip_high = ((high_20 - c_now) / high_20) * 100 if high_20 > 0 else 0.0
             low_20 = float(low.tail(20).min())
             vol_spread = ((high_20 - low_20) / low_20) * 100 if low_20 > 0 else 0.0
@@ -145,6 +150,7 @@ def fetch_argon_v2_data(tickers):
             if rs_alpha > 0.5: score += 10.0
             if 2.0 <= dip_high <= 12.0: score += 14.0
             if 35.0 <= rsi_v <= 56.0: score += 12.0
+            if 0.65 <= rv_ratio <= 1.25: score += 5.0
             argon_score = int(np.clip(score, 10, 99))
 
             hist_df = pd.DataFrame({
@@ -155,7 +161,8 @@ def fetch_argon_v2_data(tickers):
             results.append({
                 "ticker": ticker, "close": c_now, "high_today": h_today, "low_today": l_today,
                 "last_bar_date": last_bar_date, "pct": pct_1d, "rs_alpha": rs_alpha,
-                "valuta": valuta, "rsi": rsi_v, "atr": atr_14, "volatility": vol_spread,
+                "valuta": valuta, "rsi": rsi_v, "atr": atr_14, "atr_pct": atr_pct,
+                "rv": rv_ratio, "volatility": vol_spread,
                 "score": argon_score, "history": hist_df
             })
         except Exception:
@@ -178,11 +185,33 @@ def plot_plotly_chart(hist_df, color_hex, fill_rgba, height=110):
     return fig
 
 def calc_capped_levels(price, atr):
-    raw_target = price + (2.5 * atr)
-    target = min(max(raw_target, price * 1.065), price * 1.10)
-    raw_stop = price - (1.4 * atr)
-    stop = max(min(raw_stop, price * 0.97), price * 0.955)
+    """
+    Skalar Target (+6.5% till +10.0%) och Stop (-3.0% till -4.5%)
+    dynamiskt vid köptillfället baserat på aktiens R/V (0.65 = golv, 1.0 = tak).
+    """
+    atr_pct = (atr / price) * 100.0 if price > 0 else 2.925
+    rv = atr_pct / 4.5
+    scale = float(np.clip((rv - 0.65) / (1.00 - 0.65), 0.0, 1.0))
+
+    target_pct = 0.065 + (scale * 0.035)  # 6.5% vid R/V <= 0.65, 10.0% vid R/V >= 1.0
+    stop_pct = 0.030 + (scale * 0.015)    # 3.0% vid R/V <= 0.65, 4.5% vid R/V >= 1.0
+
+    target = price * (1.0 + target_pct)
+    stop = price * (1.0 - stop_pct)
     return target, stop
+
+def calc_short_levels(price, atr):
+    """Dynamisk Target och Stop för Bear/Short baserat på R/V."""
+    atr_pct = (atr / price) * 100.0 if price > 0 else 2.925
+    rv = atr_pct / 4.5
+    scale = float(np.clip((rv - 0.65) / (1.00 - 0.65), 0.0, 1.0))
+
+    target_pct = 0.065 + (scale * 0.035)
+    stop_pct = 0.030 + (scale * 0.015)
+
+    s_target = price * (1.0 - target_pct)
+    s_stop = price * (1.0 + stop_pct)
+    return s_target, s_stop
 
 def safe_shares(cash, risk, entry, stop):
     try:
@@ -194,12 +223,20 @@ def safe_shares(cash, risk, entry, stop):
     except Exception:
         return 1
 
-market_data = fetch_argon_v2_data(tickers_list)
-if not market_data:
+all_market_data = fetch_argon_v2_data(tickers_list)
+if not all_market_data:
     st.warning("Ingen marknadsdata kunde hämtas.")
     st.stop()
 
-market_map = {item["ticker"]: item for item in market_data}
+# Map över ALLA hämtade aktier så att låsta innehav alltid kan uppdateras
+market_map = {item["ticker"]: item for item in all_market_data}
+
+# Filtrera kandidater utifrån valt R/V-golv i sidopanelen
+market_data = [d for d in all_market_data if d["rv"] >= min_rv]
+if not market_data:
+    st.warning(f"Inga aktier klarade R/V-golvet på {min_rv:.2f}. Visar alla aktier tillfälligt.")
+    market_data = all_market_data
+
 sorted_argon = sorted(market_data, key=lambda x: (x["score"], x["rs_alpha"]), reverse=True)
 bull_list = sorted_argon[:10]
 bull_set = {i["ticker"] for i in bull_list}
@@ -230,12 +267,19 @@ for pos in portfolio["positions"]:
     tkr = pos["ticker"]
     ent_p = float(pos["entry_price"])
 
-    pos["target"] = min(max(float(pos["target"]), ent_p * 1.065), ent_p * 1.10)
-    pos["stop"] = max(min(float(pos["stop"]), ent_p * 0.97), ent_p * 0.955)
+    # LÅST TARGET & STOP FRÅN ENTRYDAGEN (räknas aldrig om i efterhand)
+    pos["target"] = float(pos["target"])
+    pos["stop"] = float(pos["stop"])
 
     if tkr in market_map:
         m = market_map[tkr]
         cur_p = m["close"]
+        # Spara R/V från första gången om det inte redan ligger i json-filen
+        if "rv" not in pos:
+            pos["rv"] = m["rv"]
+        if "atr_pct" not in pos:
+            pos["atr_pct"] = m["atr_pct"]
+
         is_new_session = m["last_bar_date"] > pos["entry_date"]
         h_p = m["high_today"] if is_new_session else cur_p
         l_p = m["low_today"] if is_new_session else cur_p
@@ -243,6 +287,8 @@ for pos in portfolio["positions"]:
         cur_p = ent_p
         h_p = cur_p
         l_p = cur_p
+        pos["rv"] = pos.get("rv", 0.75)
+        pos["atr_pct"] = pos.get("atr_pct", 3.4)
 
     entry_dt = datetime.strptime(pos["entry_date"], "%Y-%m-%d")
     days_held = (today_dt - entry_dt).days
@@ -290,6 +336,7 @@ if open_slots > 0 and portfolio["cash"] > 1000:
     for cand in candidates[:open_slots]:
         alloc_sek = portfolio["cash"] / open_slots
         c_price = cand["close"]
+        # Beräknas EN gång vid entry och sparas sedan låst i pos
         t_target, t_stop = calc_capped_levels(c_price, cand["atr"])
         conv = fx_rate if cand["valuta"] == "USD" else 1.0
         shares = max(int((alloc_sek / conv) / c_price), 1) if c_price > 0 else 1
@@ -301,6 +348,8 @@ if open_slots > 0 and portfolio["cash"] > 1000:
             "current_price": c_price,
             "target": t_target,
             "stop": t_stop,
+            "rv": cand["rv"],
+            "atr_pct": cand["atr_pct"],
             "shares": shares,
             "allocated_sek": alloc_sek,
             "entry_date": today_dt.strftime("%Y-%m-%d"),
@@ -331,7 +380,8 @@ st.markdown(
     "(<span style='color: " + tot_color + "; font-weight: bold;'>" + f"{total_roi_pct:+.2f}%" + "</span>) | "
     "<b>Fri Kassa:</b> " + f"{portfolio['cash']:,.0f}" + " SEK | "
     "<b>Låsta Innehav:</b> " + str(len(portfolio["positions"])) + "/3 st | "
-    "<b>Regel:</b> Target begränsad till +6,5% till +10,0% (Stop -3,0% till -4,5%)."
+    "<b>Filter:</b> R/V ≥ " + f"{min_rv:.2f}" + " (" + str(len(market_data)) + "/" + str(len(all_market_data)) + " aktier) | "
+    "<b>Regel:</b> Dynamisk Target +6,5% till +10,0% (Stop -3,0% till -4,5%) låst vid entry."
     "</p>"
     "</div>",
     unsafe_allow_html=True
@@ -346,21 +396,24 @@ for idx, pos in enumerate(portfolio["positions"]):
         cur_val_sek = pos["allocated_sek"] * (1.0 + (pct_dev / 100.0))
         roi_col = "#10b981" if pct_dev >= 0 else "#ef4444"
 
-        dist_target = ((pos["target"] - cur_p) / cur_p) * 100.0
-        dist_stop = ((cur_p - pos["stop"]) / cur_p) * 100.0
+        # Fast procent från entrykursen
+        target_from_entry = ((pos["target"] - ent_p) / ent_p) * 100.0
+        stop_from_entry = ((ent_p - pos["stop"]) / ent_p) * 100.0
+        pos_rv = pos.get("rv", 0.75)
+        pos_atr_pct = pos.get("atr_pct", pos_rv * 4.5)
 
         card_text = (
             "<div class='stock-card' style='border-color: #10b981;'>"
             "<span class='argon-badge' style='background: #10b981; color: #000;'>🔒 LÅST POS #" + str(idx+1) + "</span>"
             "<h4 style='margin: 0; color: #34d399;'>⚡ " + pos["ticker"] + "</h4>"
-            "<p style='margin: 4px 0; font-size: 0.85rem;'>Värde nu: <b>" + f"{cur_val_sek:,.0f}" + " SEK</b> (" + str(pos["shares"]) + " st)</p>"
+            "<p style='margin: 4px 0; font-size: 0.85rem;'>Värde nu: <b>" + f"{cur_val_sek:,.0f}" + " SEK</b> (" + str(pos["shares"]) + " st) | <b>R/V:</b> " + f"{pos_rv:.2f}" + " (" + f"{pos_atr_pct:.1f}" + "%/dag)</p>"
             "<hr style='border-color: #1e293b; margin: 6px 0;'>"
             "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Status:</b> <span style='color: #38bdf8; font-weight: bold;'>BEHÅLL (Dag " + str(pos["days_held"]) + "/" + str(hold_days) + ")</span></p>"
             "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entry-datum:</b> " + pos["entry_date"] + "</p>"
             "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Planerad Exit:</b> " + pos["planned_exit"] + "</p>"
             "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Entrykurs:</b> " + f"{ent_p:.2f}" + " " + pos["valuta"] + " | <b>Nu:</b> " + f"{cur_p:.2f}" + "</p>"
             "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Utveckling sedan entry:</b> <span style='color: " + roi_col + "; font-weight: bold;'>" + f"{pct_dev:+.2f}%</span></p>"
-            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{pos['target']:.2f}" + " (+" + f"{dist_target:.1f}" + "%) | <b>Stop:</b> " + f"{pos['stop']:.2f}" + " (-" + f"{dist_stop:.1f}" + "%)</p>"
+            "<p style='margin: 2px 0; font-size: 0.8rem;'>• <b>Target:</b> " + f"{pos['target']:.2f}" + " (+" + f"{target_from_entry:.1f}" + "%) | <b>Stop:</b> " + f"{pos['stop']:.2f}" + " (-" + f"{stop_from_entry:.1f}" + "%)</p>"
             "</div>"
         )
         st.markdown(card_text, unsafe_allow_html=True)
@@ -384,15 +437,17 @@ with col_left:
     for item in bull_list:
         entry_p = item["close"] - (0.35 * item["atr"])
         target_p, stop_p = calc_capped_levels(entry_p, item["atr"])
+        t_pct = ((target_p - entry_p) / entry_p) * 100.0
+        s_pct = ((entry_p - stop_p) / entry_p) * 100.0
         shares = safe_shares(fiktiv_kassa, risk_pct, entry_p, stop_p)
         card_html = (
             "<div class='stock-card'>"
-            "<span class='argon-badge'>SCORE: " + str(item['score']) + "</span>"
+            "<span class='argon-badge'>SCORE: " + str(item['score']) + " | R/V: " + f"{item['rv']:.2f}" + "</span>"
             "<h3 style='margin: 0; color: #38bdf8;'>⚡ " + item['ticker'] + "</h3>"
-            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
+            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}% | ATR: " + f"{item['atr_pct']:.1f}%/dag</p>"
             "</div>"
             "<div class='report-box'>"
-            "• <b>Entry:</b> " + f"{entry_p:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{target_p:.2f}" + " | <b>Stop:</b> " + f"{stop_p:.2f}" + "<br>"
+            "• <b>Entry:</b> " + f"{entry_p:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{target_p:.2f}" + " (+" + f"{t_pct:.1f}" + "%) | <b>Stop:</b> " + f"{stop_p:.2f}" + " (-" + f"{s_pct:.1f}" + "%)<br>"
             "• <b>Positionsstorlek:</b> <b>" + str(shares) + " st aktier</b>"
             "</div>"
         )
@@ -403,16 +458,17 @@ with col_right:
     st.markdown("<h2 style='color: #dc2626; margin: 0;'>🔴 BEAR DIVISION (TOPP 10)</h2>", unsafe_allow_html=True)
     for item in bear_list:
         s_entry = item["close"] + (0.35 * item["atr"])
-        s_stop = min(max(s_entry + (1.4 * item["atr"]), s_entry * 1.03), s_entry * 1.045)
-        s_target = max(min(s_entry - (2.5 * item["atr"]), s_entry * 0.935), s_entry * 0.90)
+        s_target, s_stop = calc_short_levels(s_entry, item["atr"])
+        st_pct = ((s_entry - s_target) / s_entry) * 100.0
+        ss_pct = ((s_stop - s_entry) / s_entry) * 100.0
         bear_html = (
             "<div class='stock-card'>"
-            "<span class='bear-badge'>SCORE: " + str(item['score']) + "</span>"
+            "<span class='bear-badge'>SCORE: " + str(item['score']) + " | R/V: " + f"{item['rv']:.2f}" + "</span>"
             "<h3 style='margin: 0; color: #f87171;'>💀 " + item['ticker'] + "</h3>"
-            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}%</p>"
+            "<p style='margin: 4px 0;'><b>" + f"{item['close']:.2f}" + " " + item['valuta'] + "</b> (" + f"{item['pct']:+.2f}" + "%) | RS-Alpha: " + f"{item['rs_alpha']:+.1f}% | ATR: " + f"{item['atr_pct']:.1f}%/dag</p>"
             "</div>"
             "<div class='bear-report-box'>"
-            "• <b>Short Entry:</b> " + f"{s_entry:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{s_target:.2f}" + " | <b>Stop:</b> " + f"{s_stop:.2f}"
+            "• <b>Short Entry:</b> " + f"{s_entry:.2f}" + " " + item['valuta'] + " | <b>Target:</b> " + f"{s_target:.2f}" + " (-" + f"{st_pct:.1f}" + "%) | <b>Stop:</b> " + f"{s_stop:.2f}" + " (+" + f"{ss_pct:.1f}" + "%)"
             "</div>"
         )
         st.markdown(bear_html, unsafe_allow_html=True)
@@ -425,9 +481,9 @@ g_shares = safe_shares(fiktiv_kassa, risk_pct, g_entry, g_stop)
 
 gazelle_html = (
     "<div class='gazelle-box'>"
-    "<span class='gazelle-badge'>SCORE: " + str(gazelle['score']) + " | 20D SPREAD: " + f"{gazelle['volatility']:.1f}" + "%</span>"
+    "<span class='gazelle-badge'>SCORE: " + str(gazelle['score']) + " | R/V: " + f"{gazelle['rv']:.2f}" + " | 20D SPREAD: " + f"{gazelle['volatility']:.1f}" + "%</span>"
     "<h2 style='color: #eab308; margin: 0;'>🔥 VECKANS ARGON-GASELL: " + gazelle['ticker'] + "</h2>"
-    "<p style='margin: 8px 0;'><b>Slutkurs:</b> " + f"{gazelle['close']:.2f}" + " " + gazelle['valuta'] + " (" + f"{gazelle['pct']:+.2f}" + "%) | <b>RS-Alpha:</b> " + f"{gazelle['rs_alpha']:+.1f}" + "% | <b>RSI:</b> " + f"{gazelle['rsi']:.1f}" + "</p>"
+    "<p style='margin: 8px 0;'><b>Slutkurs:</b> " + f"{gazelle['close']:.2f}" + " " + gazelle['valuta'] + " (" + f"{gazelle['pct']:+.2f}" + "%) | <b>RS-Alpha:</b> " + f"{gazelle['rs_alpha']:+.1f}" + "% | <b>RSI:</b> " + f"{gazelle['rsi']:.1f}" + " | <b>ATR:</b> " + f"{gazelle['atr_pct']:.1f}%/dag</p>"
     "<div style='border-top: 1px solid #334155; padding-top: 10px; margin-top: 8px;'>"
     "• <b>Entry (Köpzon):</b> " + f"{g_entry:.2f}" + " " + gazelle['valuta'] + " | <b>Target:</b> " + f"{g_target:.2f}" + " | <b>Stop-Loss:</b> " + f"{g_stop:.2f}" + "<br>"
     "• <b>Rekommenderad Positionsstorlek:</b> <b>" + str(g_shares) + " st aktier</b> (vid " + str(risk_pct) + "% portföljrisk)"
