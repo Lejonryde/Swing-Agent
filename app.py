@@ -55,12 +55,12 @@ def save_portfolio(data):
     except Exception:
         pass
 
-if st.sidebar.button("🔄 Nollställ Paper-Portfölj"):
+if st.sidebar.button("🔄 Nollställ Paper-Portfölj", key="sb_reset_all"):
     if os.path.exists(PORTFOLIO_FILE):
         os.remove(PORTFOLIO_FILE)
     st.rerun()
 
-if st.sidebar.button("🧹 Rensa enbart historik"):
+if st.sidebar.button("🧹 Rensa enbart historik", key="sb_clear_hist"):
     p_temp = load_portfolio(fiktiv_kassa)
     p_temp["history"] = []
     save_portfolio(p_temp)
@@ -209,7 +209,6 @@ for pos in portfolio["positions"]:
     if tkr in market_map:
         m = market_map[tkr]
         cur_p = m["close"]
-        # Använd endast intradags High/Low om senaste handelsstapeln är nyare än entry-datumet
         is_new_session = m["last_bar_date"] > pos["entry_date"]
         h_p = m["high_today"] if is_new_session else cur_p
         l_p = m["low_today"] if is_new_session else cur_p
@@ -343,6 +342,10 @@ with st.expander("📜 Visa Avslutade Affärer & Loggbok (" + str(len(portfolio[
     if portfolio["history"]:
         hist_table = pd.DataFrame(portfolio["history"])
         st.dataframe(hist_table, use_container_width=True)
+        if st.button("🧹 Töm Loggbok", key="main_clear_hist"):
+            portfolio["history"] = []
+            save_portfolio(portfolio)
+            st.rerun()
     else:
         st.info("Inga affärer har avslutats ännu. Motorn utvärderar dina 3 låsta positioner varje timme och säljer först när Target, Stop-Loss eller Planerad Exit nås.")
 
