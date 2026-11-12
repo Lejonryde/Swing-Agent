@@ -76,13 +76,13 @@ st.markdown(
 def fetch_argon_v2_data(tickers):
     omx_5d, spx_5d = 0.0, 0.0
     try:
-        omx = yf.Ticker("^OMX").history(period="1mo")
+        omx = yf.Ticker("^OMX").history(period="1mo").dropna()
         if len(omx) >= 6:
             omx_5d = ((float(omx["Close"].iloc[-1]) - float(omx["Close"].iloc[-6])) / float(omx["Close"].iloc[-6])) * 100
     except Exception:
         pass
     try:
-        spx = yf.Ticker("^GSPC").history(period="1mo")
+        spx = yf.Ticker("^GSPC").history(period="1mo").dropna()
         if len(spx) >= 6:
             spx_5d = ((float(spx["Close"].iloc[-1]) - float(spx["Close"].iloc[-6])) / float(spx["Close"].iloc[-6])) * 100
     except Exception:
@@ -91,12 +91,15 @@ def fetch_argon_v2_data(tickers):
     results = []
     for ticker in tickers:
         try:
-            df = yf.Ticker(ticker).history(period="3mo")
+            df = yf.Ticker(ticker).history(period="3mo").dropna(subset=["Close", "High", "Low"])
             if df.empty or len(df) < 20:
                 continue
             close, high, low = df["Close"], df["High"], df["Low"]
             c_now, c_prev = float(close.iloc[-1]), float(close.iloc[-2])
             h_today, l_today = float(high.iloc[-1]), float(low.iloc[-1])
+            if np.isnan(c_now) or c_now <= 0:
+                continue
+
             pct_1d = ((c_now - c_prev) / c_prev) * 100
             c_5d = float(close.iloc[-6]) if len(close) >= 6 else c_prev
             pct_5d = ((c_now - c_5d) / c_5d) * 100
@@ -111,9 +114,12 @@ def fetch_argon_v2_data(tickers):
             high_20 = float(high.tail(20).max())
 
             tr = np.maximum(high - low, np.maximum((high - close.shift(1)).abs(), (low - close.shift(1)).abs()))
-            atr_14 = float(tr.tail(14).mean())
-            dip_high = ((high_20 - c_now) / high_20) * 100
-            vol_spread = ((high.tail(20).max() - low.tail(20).min()) / low.tail(20).min()) * 100
+            atr_raw = float(tr.tail(14).mean())
+            atr_14 = atr_raw if (not np.isnan(atr_raw) and atr_raw > 0) else (c_now * 0.025)
+
+            dip_high = ((high_20 - c_now) / high_20) * 100 if high_20 > 0 else 0.0
+            low_20 = float(low.tail(20).min())
+            vol_spread = ((high_20 - low_20) / low_20) * 100 if low_20 > 0 else 0.0
 
             score = 50.0
             if c_now > sma50: score += 12.0
@@ -152,13 +158,21 @@ def plot_plotly_chart(hist_df, color_hex, fill_rgba, height=110):
     return fig
 
 def calc_capped_levels(price, atr):
-    # Target: +6.5% till max +10.0%
     raw_target = price + (2.5 * atr)
     target = min(max(raw_target, price * 1.065), price * 1.10)
-    # Stop-Loss: -3.0% till max -4.5%
     raw_stop = price - (1.4 * atr)
     stop = max(min(raw_stop, price * 0.97), price * 0.955)
     return target, stop
+
+def safe_shares(cash, risk, entry, stop):
+    try:
+        diff = max(float(entry) - float(stop), 0.01)
+        val = (float(cash) * (float(risk) / 100.0)) / diff
+        if np.isnan(val) or np.isinf(val):
+            return 1
+        return max(int(val), 1)
+    except Exception:
+        return 1
 
 market_data = fetch_argon_v2_data(tickers_list)
 if not market_data:
@@ -237,7 +251,7 @@ if open_slots > 0 and portfolio["cash"] > 1000:
         c_price = cand["close"]
         t_target, t_stop = calc_capped_levels(c_price, cand["atr"])
         conv = fx_rate if cand["valuta"] == "USD" else 1.0
-        shares = int((alloc_sek / conv) / c_price) if c_price > 0 else 1
+        shares = max(int((alloc_sek / conv) / c_price), 1) if c_price > 0 else 1
 
         new_pos = {
             "ticker": cand["ticker"],
@@ -326,7 +340,7 @@ with col_left:
     for item in bull_list:
         entry_p = item["close"] - (0.35 * item["atr"])
         target_p, stop_p = calc_capped_levels(entry_p, item["atr"])
-        shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(entry_p - stop_p, 0.01))
+        shares = safe_shares(fiktiv_kassa, risk_pct, entry_p, stop_p)
         card_html = (
             "<div class='stock-card'>"
             "<span class='argon-badge'>SCORE: " + str(item['score']) + "</span>"
@@ -363,7 +377,7 @@ with col_right:
 st.markdown("---")
 g_entry = gazelle["close"] - (0.35 * gazelle["atr"])
 g_target, g_stop = calc_capped_levels(g_entry, gazelle["atr"])
-g_shares = int((fiktiv_kassa * (risk_pct / 100.0)) / max(g_entry - g_stop, 0.01))
+g_shares = safe_shares(fiktiv_kassa, risk_pct, g_entry, g_stop)
 
 gazelle_html = (
     "<div class='gazelle-box'>"
