@@ -97,6 +97,7 @@ def fetch_argon_v2_data(tickers):
             close, high, low = df["Close"], df["High"], df["Low"]
             c_now, c_prev = float(close.iloc[-1]), float(close.iloc[-2])
             h_today, l_today = float(high.iloc[-1]), float(low.iloc[-1])
+            last_bar_date = close.index[-1].strftime("%Y-%m-%d")
             if np.isnan(c_now) or c_now <= 0:
                 continue
 
@@ -135,8 +136,9 @@ def fetch_argon_v2_data(tickers):
 
             results.append({
                 "ticker": ticker, "close": c_now, "high_today": h_today, "low_today": l_today,
-                "pct": pct_1d, "rs_alpha": rs_alpha, "valuta": valuta, "rsi": rsi_v,
-                "atr": atr_14, "volatility": vol_spread, "score": argon_score, "history": hist_df
+                "last_bar_date": last_bar_date, "pct": pct_1d, "rs_alpha": rs_alpha,
+                "valuta": valuta, "rsi": rsi_v, "atr": atr_14, "volatility": vol_spread,
+                "score": argon_score, "history": hist_df
             })
         except Exception:
             continue
@@ -201,8 +203,10 @@ for pos in portfolio["positions"]:
     if tkr in market_map:
         m = market_map[tkr]
         cur_p = m["close"]
-        h_p = m["high_today"]
-        l_p = m["low_today"]
+        # Använd endast intradags High/Low om senaste handelsstapeln är nyare än entry-datumet
+        is_new_session = m["last_bar_date"] > pos["entry_date"]
+        h_p = m["high_today"] if is_new_session else cur_p
+        l_p = m["low_today"] if is_new_session else cur_p
     else:
         cur_p = ent_p
         h_p = cur_p
