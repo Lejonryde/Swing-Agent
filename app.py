@@ -59,7 +59,7 @@ if st.sidebar.button("🔄 Nollställ Paper-Portfölj"):
     if os.path.exists(PORTFOLIO_FILE):
         os.remove(PORTFOLIO_FILE)
     st.rerun()
-   
+
 if st.sidebar.button("🧹 Rensa enbart historik"):
     p_temp = load_portfolio(fiktiv_kassa)
     p_temp["history"] = []
